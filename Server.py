@@ -44,12 +44,15 @@ class Server:
         # Start the sending Thread
         self.sender = Thread(target=self.run, args=())
         self.sender.start()
-        # Start the sending Thread
+        # Start the time Thread
         self.timer = Thread(target=self.timer, args=())
         self.timer.start()
+        # start election timer thread
+        self.electiontimer = Thread(target=self.timer, args=())
+        self.electiontimer.start()
 
     # This method builds the client from a found file
-    def from_file(self, file):
+    def from_file(self, file): # JORDAN!!
         address_book = []
         for line in file:
             address_book.append(line.strip().split(','))
@@ -57,28 +60,18 @@ class Server:
         file.close()
 
     # This method collects and sets the address and port for this client instance
-    def self_info(self):
+    def self_info(self): # JORDAN!!
         self.address = input("Enter your IP address: ").strip()
         self.port = int(input("Enter your preferred port: ").strip())
 
     # Method to create start up file for next run
-    def to_file(self):
+    def to_file(self): # JORDAN!!
         file = open("server_addresses", 'w+')
         for address in self.address:
             line = str(address[0]) + ',' + address[1] + ',' + str(address[2])
             file.write(line)
         file.close()
 
-    # Method to run the main loop
-    def run(self):
-        instructions()
-        sleep(10)
-        print("\nPlease wait while we connect you....\n")
-        # Contact cluster
-        while not self.ready:
-            sleep(1)
-        count_down()
-        self.server_loop()
 
     # Method to run the game loop
     def server_loop(self):
@@ -130,11 +123,8 @@ class Server:
     def restart(self):
         self.alive = True
 
-    def request(self, item): # Send request to leader, maybe need
-        pass
-
     def update_log(self, items):
-        #TODO might need more robust trimming method - wuu bernstein here?
+        #might need more robust trimming method - wuu bernstein here?
         for x in items:
             if x not in self.log:
                 self.log.append(x)
@@ -213,5 +203,9 @@ class Server:
             self.wb_trim()
 
     def talk_to_client(self):
-        pass
+        #leader should tell client msg was recived
+       pass
 
+
+    def request(self, item): # Send request to leader, we do need , fwd to leader
+        pass
