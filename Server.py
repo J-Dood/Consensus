@@ -5,6 +5,7 @@
 
 from threading import Thread
 from time import sleep
+import time
 
 class Server:
 
@@ -105,8 +106,8 @@ class Server:
                     # do leader shit
                     # TODO send initial empty append entries to each server, repeat to prevent timeouts
                     # TODO if msg receive from client append entry to local log, respond after entry applied to state machine
-                    if self.commitIndex
-                    pass
+                    # if self.commitIndex
+                    #     pass
                 else:
                     #do follower shit
                     # TODO respond to msgs from candidates and leaders
@@ -183,13 +184,14 @@ class Server:
         pass
 
     #TODO - from dislog - modify for this one
-    def send(self, person, message):
-        self.log.append(((self.id, self.get_stamp()), "send", None))
-        self.s.sendto(message.encode('utf-8'), (self.nodes[person - 1][1], self.nodes[person - 1][2]))
+    def send(self, message):
+        #self.log.append(((self.id, self.get_stamp()), "send", None))
+        for server in self.addresses:
+            self.s.sendto(message.encode('utf-8'), (self.nodes[server - 1][1], self.nodes[server - 1][2]))
 
         # Method to receive msg
 
-    #TODO - from dislog - modify for this one
+    #TODO - from dislog - modify for this one, combine with severloop probably honestly
     def receive(self):
         while True:
             packet, address = self.s.recvfrom(1024)
