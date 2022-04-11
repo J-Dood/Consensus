@@ -1,4 +1,3 @@
-"""This is responsable for running the UI, tracking penalties and wait times, and talking to the server"""
 """State, wait time, list of server nodes, alive bool, messaging info(IP, port, ID), pending move queue?"""
 # Written by Jordan Dood and Connie Bernard
 # April 7th 2022
@@ -15,6 +14,9 @@ from time import sleep
 
 # Static Functions
 # Function to print instructions
+import winsound
+
+
 def instructions():
     print("When the game starts you can use these keys: ")
     print("use [Q] to punch with left")
@@ -29,16 +31,16 @@ def instructions():
 # Function to count down to the fight
 def count_down():
     print("Fight in 3...")
-    # TODO bell sound
+    winsound.Beep(440, 500)
     sleep(1)
     print("Fight in 2...")
-    # TODO bell sound
+    winsound.Beep(440, 500)
     sleep(1)
     print("Fight in 1...")
-    # TODO bell sound
+    winsound.Beep(440, 500)
     sleep(1)
     print("Fight!!!\n")
-    # TODO bell sound
+    winsound.Beep(500, 750)
 
 
 # Function to print the game result
@@ -56,11 +58,11 @@ class Client:
     Id = None
     address = None
     port = 4000
-    can_strike = True
     penalties = 0
+    can_strike = True
     blocking_left = False
     blocking_right = False
-    ready = False
+    ready = False # Does double duty tracking if other player is alive
     alive = True
 
     # Class functions
@@ -130,7 +132,7 @@ class Client:
 
     # Method to run the game loop
     def game_loop(self):
-        while self.alive:
+        while self.alive and self.ready:
             choice = input().strip().lower()
             if choice == 'q' and self.can_strike:
                 self.strike_left()
@@ -182,4 +184,10 @@ class Client:
 
     def receive(self): # Respond to incoming log, may update leader info
         pass
+
+
+# The test driver
+if __name__ == '__main__':
+    count_down()
+
 
