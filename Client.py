@@ -46,9 +46,16 @@ def count_down():
 # Function to print the game result
 def game_result(alive):
     if alive:
-        print("\nYOU WIN!!!\n")
+        print("       _      _\n      (_)    | |\n"
+              + "__   ___  ___| |_ ___  _ __ _   _\n"
+              + "\ \ / / |/ __| __/ _ \| '__| | | |\n"
+              + " \ V /| | (__| || (_) | |  | |_| |\n"
+              + "  \_/ |_|\___|\__\___/|_|   \__, |\n"
+              + "                             __/ |\n"
+              + "                            |___/ "
+              + "\n          YOU WIN!\n")
     else:
-        print("\nYOU DIED!!!\n")
+        print("\n    ___\n   |RIP|\n   |   |\n ##|___|##\n YOU DIED!\n")
 
 
 # The class for running the UI and handling the game state and messaging the server
@@ -188,6 +195,6 @@ class Client:
 
 # The test driver
 if __name__ == '__main__':
-    count_down()
+    game_result(True)
 
 
