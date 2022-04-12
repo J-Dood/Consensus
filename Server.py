@@ -111,7 +111,6 @@ class Server:
                     self.leader = False
                     self.leaderID = self.from_msg_id
             if self.leader: #leader only shit
-                # do leader shit
                 if self.heartbeat is 0: # could election timer doubel as heartbeat timer?
                     # TODO - fix timer
                     # TODO - logupdates will either be empty, if its just a heartbeat or will have updates if we got a msg from client
@@ -192,10 +191,11 @@ class Server:
         self.votes = 1
         self.currentTerm += 1
         self.electionTimer == 'reset' #TODO TIMER actually reset
-        msg = {'type':'request vote', 'term': self.currentTerm, 'candidateID': self.id, 'lastLogIndex': (len(self.log)-1), 'lastLogTerm': self.log[(len(self.log)-1)]}
-        self.send(msg)
-        if self.votes >= 3:
-            self.leader = True
+        msg = {'sender': 'server', 'type':'request vote', 'term': self.currentTerm, 'candidateID': self.id, 'lastLogIndex': (len(self.log)-1), 'lastLogTerm': self.log[(len(self.log)-1)]}
+        self.send(json.dumps(msg))
+        while self.electionTimer != 0:
+            if self.votes >= 3:
+                self.leader = True
 
 
     '''
@@ -224,15 +224,16 @@ class Server:
                 # Jordan!
                 if not self.leader:
                     self.fwd_to_leader(packet)
+
             if sender is 'server':
                 type = packet['type']
                 if type is 'append entries':
                     response = self.append_entries(packet['term'], packet['leaderID'], packet['prevLogIndex'], packet['prevLogTerm'], packet['entries'], packet['leaderCommit'])
-                    msg = {'type': 'ae response', 'id': self.id, 'response': response}
+                    msg = {'sender': 'server', 'type': 'ae response', 'id': self.id, 'response': response}
                     self.send(json.dumps(msg), False, self.leaderID)
                 if type is 'request vote':
                     success = self.request_vote(packet['term'], packet['candidateID'], packet['lastLogIndex'], packet['lastLogTerm'])
-                    msg = {'type': 'vote response', 'id': self.id, 'success': success}
+                    msg = {'sender': 'server', 'type': 'vote response', 'id': self.id, 'success': success}
                     self.send(json.dumps(msg), False, packet['candidateID'])
                 if type is 'ae response' and self.leader:
                     # TODO if last log index >= next index from follower send them older logs too
