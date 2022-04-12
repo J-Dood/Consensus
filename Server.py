@@ -46,7 +46,6 @@ class Server:
         # Start the sending Thread
         self.sender = Thread(target=self.run, args=())
         self.sender.start()
-
         # TODO TIMER HELP
         # Start the time Thread
         self.timer = Thread(target=self.timer, args=())
@@ -89,12 +88,12 @@ class Server:
     # Method to run the ui and the server
     def user_input_loop(self):
         while True:
-            choice = input().strip().lower()
-            if choice == '1': # Timeout
-                self.timer = 0 #
-            elif choice == '2': # Crash
-                self.alive = False
-            elif choice == '3': # Restart
+            choice = input(">").strip().lower()
+            if choice == '1':  # Timeout
+                self.timer = 0
+            elif choice == '2':  # Crash
+                self.crash()
+            elif choice == '3':  # Restart
                 self.alive = True
                 # probably need to do more here? like reset timer? and talk to other nodes idk
                 # pull from file to fill log
@@ -264,3 +263,15 @@ class Server:
     def fwd_to_leader(self, item): # Send request to leader, we do need , fwd to leader
         # TODO Implement this lol
         pass
+
+    # Method to do the 'crashing' of the server
+    def crash(self):
+        self.alive = False
+        self.log = None
+        self.id = None
+        self.leaderID = None
+        self.currentTerm = 0
+        self.votedFor = None
+        self.commitIndex = None
+        self.lastApplied = None
+        
