@@ -131,29 +131,32 @@ class Server:
 
     # This method runs the main server loop
     def server_loop(self):
-        while self.alive:
-            if self.timeout != 0 or self.leader: #everyone does this
-                if self.commitIndex > self.lastApplied:
-                    file = open("log" + str(self.id) + ".txt", "w+")
-                    for lines in self.log:
-                        file.write(str(lines))
-                        file.write("\n")
-                    file.close()
-           # TODO fix
-            if self.leader: #leader only shit
-                if self.heartbeat is 0: # could election timer doubel as heartbeat timer?
-                    # TODO - fix timer
-                    # TODO - logupdates will either be empty, if its just a heartbeat or will have updates if we got a msg from client
-                    logupdates = []
-                    msg = {'type': 'append entries', 'term': self.currentTerm, 'leaderID': self.id, 'prevLogIndex': (len(self.log)-1),
-                           'prevLogTerm': self.log[(len(self.log)-1)], 'entries': logupdates, 'leaderCommit': self.commitIndex}
-                    self.send(msg)
-                # TODO if N > commit index.. what is N???
-            if self.timeout is 0 and self.alive: #candidate time
-                self.leader_election()
-                if self.electionTimer is 0:
+        while True:
+            if self.alive:
+                if self.timeout != 0 or self.leader: #everyone does this
+                    if self.commitIndex > self.lastApplied:
+                        file = open("log" + str(self.id) + ".txt", "w+")
+                        for lines in self.log:
+                            file.write(str(lines))
+                            file.write("\n")
+                        file.close()
+               # TODO fix
+                if self.leader: #leader only shit
+                    if self.heartbeat is 0: # could election timer doubel as heartbeat timer?
+                        # TODO - fix timer
+                        # TODO - logupdates will either be empty, if its just a heartbeat or will have updates if we got a msg from client
+                        logupdates = []
+                        msg = {'type': 'append entries', 'term': self.currentTerm, 'leaderID': self.id, 'prevLogIndex': (len(self.log)-1),
+                               'prevLogTerm': self.log[(len(self.log)-1)], 'entries': logupdates, 'leaderCommit': self.commitIndex}
+                        self.send(msg)
+                    # TODO if N > commit index.. what is N???
+                if self.timeout is 0 and self.alive: #candidate time
                     self.leader_election()
-                    self.electionTimer = 'reset' #TODO TIMER HELP
+                    if self.electionTimer is 0:
+                        self.leader_election()
+                        self.electionTimer = 'reset' #TODO TIMER HELP
+            else:  # When 'crashed' (not self.alive) this keeps us quiet in the infinite loop
+                sleep(1)
 
     '''
     timer and election timer help tick down the timers, might need fixing
