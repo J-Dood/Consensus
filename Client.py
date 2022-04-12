@@ -45,6 +45,7 @@ def count_down():
 # Function to print the game result
 def game_result(alive):
     if alive:
+        # Victory End Game
         print("       _      _\n      (_)    | |\n"
               + "__   ___  ___| |_ ___  _ __ _   _\n"
               + "\ \ / / |/ __| __/ _ \| '__| | | |\n"
@@ -54,6 +55,7 @@ def game_result(alive):
               + "                            |___/ "
               + "\n          YOU WIN!\n")
     else:
+        # Loss End Game
         print("\n    ___\n   |RIP|\n   |   |\n ##|___|##\n YOU DIED!\n")
 
 
@@ -240,7 +242,8 @@ class Client:
                    'name': self.Id,
                    'alive': self.alive,
                    'game': self.ready,
-                   'log': None
+                   'log': None,
+                   'sender': "client"
                    }
         message = json.dumps(message)
         # Send message to all server nodes if game still on

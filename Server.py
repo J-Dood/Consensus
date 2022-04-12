@@ -6,6 +6,7 @@
 from threading import Thread
 from time import sleep
 import time
+import json
 
 class Server:
 
@@ -20,8 +21,9 @@ class Server:
         self.lastApplied = 0  # index of highest log entry applied to state machine
         # LEADER ONLY BELOW
         self.leader = False # set to true if node is leader
-        self.nextIndex = 0  # index of next log entry to send to server
-        self.matchIndex = 0 # index of highest log entry known to be replicated on server
+        self.nextIndex = [0, 0, 0, 0, 0]  # index of next log entry to send to server
+        self.matchIndex = [0, 0, 0, 0, 0] # index of highest log entry known to be replicated on server
+        # for candidates
         self.votes = 0
 
         # MSG RCV INFO
@@ -95,6 +97,7 @@ class Server:
             elif choice == '3': # Restart
                 self.alive = True
                 # probably need to do more here? like reset timer? and talk to other nodes idk
+                # pull from file to fill log
             self.server_loop()
 
     def server_loop(self):
@@ -106,10 +109,7 @@ class Server:
                         file.write(str(lines))
                         file.write("\n")
                     file.close()
-                if self.from_msg_term > self.currentTerm:
-                    self.currentTerm = self.from_msg_term
-                    self.leader = False
-                    self.leaderID = self.from_msg_id
+           # TODO fix
             if self.leader: #leader only shit
                 if self.heartbeat is 0: # could election timer doubel as heartbeat timer?
                     # TODO - fix timer
@@ -118,7 +118,6 @@ class Server:
                     msg = {'type': 'append entries', 'term': self.currentTerm, 'leaderID': self.id, 'prevLogIndex': (len(self.log)-1),
                            'prevLogTerm': self.log[(len(self.log)-1)], 'entries': logupdates, 'leaderCommit': self.commitIndex}
                     self.send(msg)
-                # TODO if msg receive from client append entry to local log, respond after entry applied to state machine
                 # TODO if N > commit index.. what is N???
             if self.timeout is 0 and self.alive: #candidate time
                 self.leader_election()
@@ -145,14 +144,8 @@ class Server:
                 self.electionTimer -= 1
 
     '''
-    update_log, append_entries, reuqest_vote, and leader_election are the heart of raft
+     append_entries, reuqest_vote, and leader_election are the heart of raft
     '''
-
-    def update_log(self, items):
-        #might need more robust trimming method - wuu bernstein here?
-        for x in items:
-            if x not in self.log:
-                self.log.append(x)
 
     def append_entries(self, term, leaderID, prevLogIndex, prevLogTerm, entries, leaderCommit): # For leader, appends entries, heartbeat $$$$$$$$$$$$$$
         #TODO TIMER FIX add heartbeat functionality aka- reset timeout
@@ -164,8 +157,10 @@ class Server:
             if self.log[prevLogIndex] != prevLogTerm:
                 success = False
                 for i in range(prevLogIndex, indexOfLastNewEntry):
-                    log.remove(i)
-        self.update_log(entries)
+                    self.log.remove(i)
+        for x in entries:
+            if x not in self.log:
+                self.log.append(x)
         if leaderCommit > self.commitIndex:
             self.commitIndex = min(leaderCommit, indexOfLastNewEntry)
         if success:
@@ -174,7 +169,9 @@ class Server:
             self.leaderID = leaderID
         return success
 
-    def request_vote(self, term, candidateID, lastLogIndex, lastLogTerm): #$$$$$$$$$$$$$$$$$
+    def request_vote(self, term, candidateID, lastLogIndex, lastLogTerm):
+        if self.leader:
+            return False
         if term < self.currentTerm:
             return False
         if self.votedFor is None or self.votedFor is candidateID:
@@ -215,36 +212,49 @@ class Server:
 
     def receive(self):
         while True:
-            packet, address = self.s.recvfrom(1024)
-            packet = packet.decode('utf-8')
-            packet = json.loads(packet)
+            while self.alive:
+                packet, address = self.s.recvfrom(1024)
+                packet = packet.decode('utf-8')
+                packet = json.loads(packet)
 
-            sender = packet['sender']
-            if sender is 'client':
-                # Jordan!
-                if not self.leader:
-                    self.fwd_to_leader(packet)
+                sender = packet['sender']
+                if sender is 'client':
+                    # Jordan!
+                    if not self.leader:
+                        self.fwd_to_leader(packet)
+                    if self.leader: 
+                         # TODO if msg receive from client append entry to local log, respond after entry applied to state machine
+                         pass
 
-            if sender is 'server':
-                type = packet['type']
-                if type is 'append entries':
-                    response = self.append_entries(packet['term'], packet['leaderID'], packet['prevLogIndex'], packet['prevLogTerm'], packet['entries'], packet['leaderCommit'])
-                    msg = {'sender': 'server', 'type': 'ae response', 'id': self.id, 'response': response}
-                    self.send(json.dumps(msg), False, self.leaderID)
-                if type is 'request vote':
-                    success = self.request_vote(packet['term'], packet['candidateID'], packet['lastLogIndex'], packet['lastLogTerm'])
-                    msg = {'sender': 'server', 'type': 'vote response', 'id': self.id, 'success': success}
-                    self.send(json.dumps(msg), False, packet['candidateID'])
-                if type is 'ae response' and self.leader:
-                    # TODO if last log index >= next index from follower send them older logs too
-                    # TODO if succesful update next index and match index for follower
-                    # TODO if not succesful bc of inconsistency decrement next index and retry
-                    pass
-                if type is 'vote response':
-                    if packet['success']:
-                        self.votes += 1
-                if type is 'client fwd' and self.leader: # we are the leader and just got a client msg fwded to us from server
-                    pass
+                if sender is 'server':
+                    if packet['term'] > self.currentTerm:
+                        self.currentTerm = packet['term']
+                        self.leader = False
+                        self.leaderID = packet['id']
+                    type = packet['type']
+                    if type is 'append entries':
+                        response = self.append_entries(packet['term'], packet['leaderID'], packet['prevLogIndex'], packet['prevLogTerm'], packet['entries'], packet['leaderCommit'])
+                        msg = {'sender': 'server', 'type': 'ae response', 'id': self.id, 'term':self.currentTerm, 'response': response, 'nextIndex': len(self.log), 'commitIndex': self.commitIndex}
+                        self.send(json.dumps(msg), False, self.leaderID)
+                    if type is 'request vote':
+                        success = self.request_vote(packet['term'], packet['candidateID'], packet['lastLogIndex'], packet['lastLogTerm'])
+                        if success:
+                            msg = {'sender': 'server', 'type': 'vote response', 'id': self.id, 'term':self.currentTerm,'success': success}
+                            self.send(json.dumps(msg), False, packet['candidateID'])
+                    if type is 'ae response' and self.leader:
+                        if len(self.log)-1 >= packet['nextIndex']:
+                            if packet['response']:
+                                self.nextIndex[packet['id']] += 1
+                                self.matchIndex[packet['id']] = packet['commitIndex']
+                            if not packet['response']:
+                                self.nextIndex[packet['id']] -= 1
+                    if type is 'vote response':
+                        if packet['success']:
+                            self.votes += 1
+                    
+                    if type is 'client fwd' and self.leader: # we are the leader and just got a client msg fwded to us from server
+                          # TODO if msg receive from client append entry to local log, respond after entry applied to state machine
+                        pass
 
 
     def talk_to_client(self):
