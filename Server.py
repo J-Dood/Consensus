@@ -11,8 +11,6 @@ class Server:
 
     def __init__(self, id):
         self.alive = True
-        self.timeout = None
-        self.electionTimer = None
         self.id = id
         self.leaderID = None
         self.currentTerm = 0  # latest term server has seen
@@ -26,6 +24,7 @@ class Server:
         self.matchIndex = 0 # index of highest log entry known to be replicated on server
 
         # MSG RCV INFO
+        # TODO hopefully wont need
         self.from_msg_term = 0
         self.from_msg_id = 0
 
@@ -44,13 +43,20 @@ class Server:
         # Start the sending Thread
         self.sender = Thread(target=self.run, args=())
         self.sender.start()
+
+        # TODO TIMER HELP
         # Start the time Thread
         self.timer = Thread(target=self.timer, args=())
         self.timer.start()
+        self.timeoutReset = None
         # start election timer thread
         self.electiontimer = Thread(target=self.timer, args=())
         self.electiontimer.start()
+        self.electionTimerReset = None
 
+    '''
+    Below three functions are used to set up server's ip addresses etc
+    '''
     # This method builds the client from a found file
     def from_file(self, file): # JORDAN!!
         address_book = []
@@ -72,19 +78,27 @@ class Server:
             file.write(line)
         file.close()
 
+    '''
+    user_input_loop is what is runing everything - way user interacts with server to kill, timeout, restart
+    continually calls server loop which calls raft functions
+    '''
 
-    # Method to run the game loop
-    def server_loop(self):
+    # Method to run the ui and the server
+    def user_input_loop(self):
         while True:
             choice = input().strip().lower()
-            if choice == '1':
-                self.time_out()
-            elif choice == '2':
-                self.crash()
-            elif choice == '3':
-                self.restart()
+            if choice == '1': # Timeout
+                self.timer = 0 #
+            elif choice == '2': # Crash
+                self.alive = False
+            elif choice == '3': # Restart
+                self.alive = True
+                # probably need to do more here? like reset timer? and talk to other nodes idk
+            self.server_loop()
 
-            while self.timeout != 0 and self.alive:
+    def server_loop(self):
+        while self.alive:
+            if self.timeout != 0 or self.leader: #everyone does this
                 if self.commitIndex > self.lastApplied:
                     file = open("log" + str(self.id) + ".txt", "w+")
                     for lines in self.log:
@@ -95,33 +109,53 @@ class Server:
                     self.currentTerm = self.from_msg_term
                     self.leader = False
                     self.leaderID = self.from_msg_id
-                if self.leader:
-                    # do leader shit
-                    # TODO send initial empty append entries to each server, repeat to prevent timeouts
-                    # TODO if msg receive from client append entry to local log, respond after entry applied to state machine
-                    # if self.commitIndex
-                    #     pass
-                else:
-                    #do follower shit
-                    # TODO respond to msgs from candidates and leaders
-                    pass
+            if self.leader: #leader only shit
+                # do leader shit
+                # TODO send initial empty append entries to each server, repeat to prevent timeouts
+                # msg = term, leaderID, prevLogIndex, prevLogTerm, entries, leaderCommit
+                self.send(msg)
+                # TODO if last log index >= next index from follower send them older logs too
+                    # TODO if succesful update next index and match index for follower
+                    # TODO if not succesful bc of inconsistency decrement next index and retry
+                # TODO if msg receive from client append entry to local log, respond after entry applied to state machine
+                # TODO if N > commit index.. what is N???
                 pass
-            if self.timeout is 0: #candidate time
+            else: #followerrr
+                # TODO respond to msgs from candidates and leaders
+                # we will probably do this in recive msg
+                # TODO send responses....
+                pass
+            pass
+            if self.timeout is 0 and self.alive: #candidate time
                 self.leader_election()
                 if self.electionTimer is 0:
+                    # TODO lets think about this, might also need to do in recive... or not if we have globals...
                     self.leader_election()
-                    self.electionTimer = 'reset' #TODO
-                pass
+                    self.electionTimer = 'reset' #TODO TIMER HELP
 
 
-    def time_out(self):
-        self.timeout = 0
 
-    def crash(self):
-        self.alive = False
 
-    def restart(self):
-        self.alive = True
+    '''
+    timer and election timer help tick down the timers, might need fixing
+    '''
+
+    # TODO TIMER HELP
+    def timer(self):
+        while True:
+            if self.timeout != 0:
+                time.sleep(1)
+                self.timeout -= 1
+
+    def electiontimer(self):
+        while True:
+            if self.electionTimer != 0:
+                time.sleep(1)
+                self.electionTimer -= 1
+
+    '''
+    update_log, append_entries, reuqest_vote, and leader_election are the heart of raft
+    '''
 
     def update_log(self, items):
         #might need more robust trimming method - wuu bernstein here?
@@ -173,6 +207,9 @@ class Server:
 
         pass
 
+    '''
+    Following functions are in charge of communication, sending between servers, receving from client, etc
+    '''
     #TODO - from dislog - modify for this one
     def send(self, message):
         #self.log.append(((self.id, self.get_stamp()), "send", None))
@@ -205,7 +242,6 @@ class Server:
     def talk_to_client(self):
         #leader should tell client msg was recived
        pass
-
 
     def request(self, item): # Send request to leader, we do need , fwd to leader
         pass
