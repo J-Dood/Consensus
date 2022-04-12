@@ -126,7 +126,7 @@ class Server:
             elif choice == '2':  # Crash
                 self.crash()
             elif choice == '3':  # Restart
-                self.alive = True
+                self.revive()
                 # TODO probably need to do more here? like reset timer? and talk to other nodes idk
 
     # This method runs the main server loop
@@ -321,4 +321,15 @@ class Server:
         self.leader = None
         self.nextIndex = None
         self.votes = None
-        self.
+        self.addresses = None
+        self.address = None
+        self.port = None
+
+    # Method to do the 'crashing' of the server
+    def revive(self):
+        # TODO fix all previously messed up values using json file and log
+        self.votes = 0
+        self.leader = False
+        sleep(10)  # Gets the values in before all threads start back up
+        self.alive = True
+
