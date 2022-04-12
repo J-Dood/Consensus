@@ -1,23 +1,24 @@
 
 """has ID, current term, log, voted for, vector clock?, client and node data(IP, port, ID), timeout"""
 
-"""Need two threads to listen and send"""
 
+"""Need two threads to listen and send"""
 from threading import Thread
 from time import sleep
 import time
 import json
+import socket
 
 class Server:
 
-    def __init__(self, id):
+    def __init__(self, identity):
         self.alive = True
-        self.id = id
+        self.id = identity  # Should be an int
         self.leaderID = None
         self.currentTerm = 0  # latest term server has seen
         self.votedFor = None  # candidateID that received vote in current term
         self.log = []
-        self.commitIndex = 0  # index of highest log entry known to be commited
+        self.commitIndex = 0  # index of highest log entry known to be committed
         self.lastApplied = 0  # index of highest log entry applied to state machine
         # LEADER ONLY BELOW
         self.leader = False # set to true if node is leader
@@ -25,6 +26,8 @@ class Server:
         self.matchIndex = [0, 0, 0, 0, 0] # index of highest log entry known to be replicated on server
         # for candidates
         self.votes = 0
+        # Other fields, added by Jordan
+        self.s = None
 
         # MSG RCV INFO
         # TODO hopefully wont need
@@ -34,12 +37,16 @@ class Server:
         self.addresses = None
         self.address = None
         self.port = 4000
+
         try:
-            file_path = r"server_addresses"
+            file_path = r"server_addresses.txt"
             file = open(file_path, "r")
             self.from_file(file)
         except IOError:
             self.build_self()
+        # Sets up the port
+        self.s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.s.bind((self.address, self.port))
         # Start the listening Thread
         self.listener = Thread(target=self.receive, args=())
         self.listener.start()
@@ -50,34 +57,58 @@ class Server:
         # Start the time Thread
         self.timer = Thread(target=self.timer, args=())
         self.timer.start()
-        self.timeoutReset = None
+        self.timeoutReset = None  #TODO not sure what this does, Jordan
         # start election timer thread
-        self.electiontimer = Thread(target=self.timer, args=())
-        self.electiontimer.start()
-        self.electionTimerReset = None
+        self.election_timer = Thread(target=self.election_timer, args=())
+        self.election_timer.start()
+        self.electionTimerReset = None  #TODO not sure what this does, Jordan
+        # start UI thread
+        self.input_loop = Thread(target=self.user_input_loop, args=())
+        self.input_loopr.start()
 
     '''
     Below three functions are used to set up server's ip addresses etc
     '''
+
+    # This method gathers needed network info from the user if file not found.
+    def build_self(self):
+        print("The start up file was not found, please enter values manually.")
+        address_book = []
+        for i in range(4):
+            server_id = int(input("Enter Server ID number 1-5: ").strip())
+            server_address = input("Enter Server address: ").strip()
+            server_port = 4000
+            address_book.append([server_id, server_address, server_port])
+        self.addresses = address_book
+        self.client_info()
+        self.to_file()
+
     # This method builds the client from a found file
-    def from_file(self, file): # JORDAN!!
+    def from_file(self, file):
         address_book = []
         for line in file:
-            address_book.append(line.strip().split(','))
+            address = line.strip().split(',')
+            if address[0] != str(self.id):
+                address_book.append([int(address[0]), address[1], int(address[2])])
+            else:
+                self.address = address[1]
+                self.port = int(address[2])
         self.addresses = address_book
         file.close()
 
     # This method collects and sets the address and port for this client instance
-    def self_info(self): # JORDAN!!
+    def client_info(self):
         self.address = input("Enter your IP address: ").strip()
         self.port = int(input("Enter your preferred port: ").strip())
 
     # Method to create start up file for next run
-    def to_file(self): # JORDAN!!
-        file = open("server_addresses", 'w+')
-        for address in self.address:
-            line = str(address[0]) + ',' + address[1] + ',' + str(address[2])
+    def to_file(self):
+        file = open("server_addresses.txt", 'w+')
+        for address in self.addresses:
+            line = str(address[0]) + ',' + address[1] + ',' + str(address[2]) + "\n"
             file.write(line)
+        line = str(self.id) + ',' + str(self.address) + ',' + str(self.port) + "\n"
+        file.write(line)
         file.close()
 
     '''
@@ -85,8 +116,9 @@ class Server:
     continually calls server loop which calls raft functions
     '''
 
-    # Method to run the ui and the server
+    # Method to run the UI and the server
     def user_input_loop(self):
+        print("Choose:\n[1] Time out\n[2] Crash\n[3] Restart")
         while True:
             choice = input(">").strip().lower()
             if choice == '1':  # Timeout
@@ -95,10 +127,9 @@ class Server:
                 self.crash()
             elif choice == '3':  # Restart
                 self.alive = True
-                # probably need to do more here? like reset timer? and talk to other nodes idk
-                # pull from file to fill log
-            self.server_loop()
+                # TODO probably need to do more here? like reset timer? and talk to other nodes idk
 
+    # This method runs the main server loop
     def server_loop(self):
         while self.alive:
             if self.timeout != 0 or self.leader: #everyone does this
@@ -128,22 +159,29 @@ class Server:
     timer and election timer help tick down the timers, might need fixing
     '''
 
-    # TODO TIMER HELP
+    # Method to leader heartbeat waiting timer
     def timer(self):
-        # leader doesnot time out, they only die, so we need to be mindful of that
+        # leader does not time out, they only die, so we need to be mindful of that
         while True:
-            if self.timeout != 0:
-                time.sleep(1)
-                self.timeout -= 1
+            if self.alive:
+                if self.timeout != 0:
+                    sleep(1)
+                    self.timeout -= 1
+            else:  # When 'crashed' (not self.alive) this keeps us quiet in the infinite loop
+                sleep(1)
 
-    def electiontimer(self):
+    # Method to run election timer
+    def election_timer(self):
         while True:
-            if self.electionTimer != 0:
-                time.sleep(1)
-                self.electionTimer -= 1
+            if self.alive:
+                if self.electionTimer != 0:
+                    sleep(1)
+                    self.electionTimer -= 1
+            else:  # When 'crashed' (not self.alive) this keeps us quiet in the infinite loop
+                sleep(1)
 
     '''
-     append_entries, reuqest_vote, and leader_election are the heart of raft
+    update_log, append_entries, reuqest_vote, and leader_election are the heart of raft
     '''
 
     def append_entries(self, term, leaderID, prevLogIndex, prevLogTerm, entries, leaderCommit): # For leader, appends entries, heartbeat $$$$$$$$$$$$$$
@@ -211,7 +249,7 @@ class Server:
 
     def receive(self):
         while True:
-            while self.alive:
+            if self.alive:
                 packet, address = self.s.recvfrom(1024)
                 packet = packet.decode('utf-8')
                 packet = json.loads(packet)
@@ -221,7 +259,7 @@ class Server:
                     # Jordan!
                     if not self.leader:
                         self.fwd_to_leader(packet)
-                    if self.leader: 
+                    if self.leader:
                          # TODO if msg receive from client append entry to local log, respond after entry applied to state machine
                          pass
 
@@ -250,10 +288,12 @@ class Server:
                     if type is 'vote response':
                         if packet['success']:
                             self.votes += 1
-                    
+
                     if type is 'client fwd' and self.leader: # we are the leader and just got a client msg fwded to us from server
                           # TODO if msg receive from client append entry to local log, respond after entry applied to state machine
                         pass
+            else:  # When 'crashed' (not self.alive) this keeps us quiet in the infinite loop
+                sleep(1)
 
 
     def talk_to_client(self):
@@ -267,6 +307,7 @@ class Server:
     # Method to do the 'crashing' of the server
     def crash(self):
         self.alive = False
+        sleep(10)  # Keeps the values from clearing until all threads have 'likely' stopped
         self.log = None
         self.id = None
         self.leaderID = None
@@ -274,4 +315,7 @@ class Server:
         self.votedFor = None
         self.commitIndex = None
         self.lastApplied = None
-        
+        self.leader = None
+        self.nextIndex = None
+        self.votes = None
+        self.
