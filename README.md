@@ -11,3 +11,5 @@ dictionary
  6) log: a series of player Log Number, Name, and Move
   
   I am thinking we may want to assume multiple copies of messages may make it to the server since they might so we should be ready for redundancy 
+  
+  Also, I have it so a hit is slightly differant from a strike. If red strikes left at blue, and is not blocked, blue is hit right.
