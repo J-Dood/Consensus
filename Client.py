@@ -147,7 +147,12 @@ class Client:
     def from_file(self, file):
         address_book = []
         for line in file:
-            address_book.append(line.strip().split(','))
+            address = line.strip().split(',')
+            if address[0] != '0':
+                address_book.append([int(address[0]), address[1], int(address[2])])
+            else:
+                self.address = address[1]
+                self.port = int(address[2])
         self.addresses = address_book
         file.close()
 
@@ -160,8 +165,10 @@ class Client:
     def to_file(self):
         file = open("server_addresses.txt", 'w+')
         for address in self.addresses:
-            line = str(address[0]) + ',' + address[1] + ',' + str(address[2])
+            line = str(address[0]) + ',' + address[1] + ',' + str(address[2]) + "\n"
             file.write(line)
+        line = "0" + ',' + str(self.address) + ',' + str(self.port) + "\n"
+        file.write(line)
         file.close()
 
     # Method to run the main game loop
@@ -171,7 +178,8 @@ class Client:
         print("\nPlease wait while we connect you....\n")
         # Contact cluster
         while not self.ready:
-            sleep(1)
+            sleep(5)
+            self.send_move()
         count_down()
         self.game_loop()
         game_result(self.alive)
@@ -226,7 +234,7 @@ class Client:
             self.send_move("block_right")
 
     # A method to send a move to the server
-    def send_move(self, action):  # Send relevant data to
+    def send_move(self, action=None):  # Send relevant data to
         message = {'time': self.clock,
                    'action': action,
                    'name': self.Id,
@@ -305,5 +313,4 @@ class Client:
 # The test driver
 if __name__ == '__main__':
     client = Client()
-    """Need to finish testing this and the file read in
-    then test the other functions"""
+
