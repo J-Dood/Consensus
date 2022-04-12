@@ -1,4 +1,3 @@
-"""State, wait time, list of server nodes, alive bool, messaging info(IP, port, ID), pending move queue?"""
 # Written by Jordan Dood and Connie Bernard
 # April 7th 2022
 # This project is to implement the RAFT algorithm as the foundation for a Rock 'Em Sock 'Em Robots Game.
@@ -10,13 +9,13 @@
 # Imports
 from threading import Thread
 from time import sleep
+import winsound
+import json
+import socket
 
 
 # Static Functions
 # Function to print instructions
-import winsound
-
-
 def instructions():
     print("When the game starts you can use these keys: ")
     print("use [Q] to punch with left")
@@ -40,7 +39,7 @@ def count_down():
     winsound.Beep(440, 500)
     sleep(1)
     print("Fight!!!\n")
-    winsound.Beep(500, 750)
+    winsound.Beep(150, 100)
 
 
 # Function to print the game result
@@ -58,6 +57,39 @@ def game_result(alive):
         print("\n    ___\n   |RIP|\n   |   |\n ##|___|##\n YOU DIED!\n")
 
 
+# A function to draw action frames for hits
+def kapow(who, side):
+    if who == "me":
+        if side == "left":
+            pass
+        elif side == "right":
+            pass
+        else:
+            print("I don’t know if we’ll ever get back home.")  # Error Message
+    elif who == "other":
+        if side == "left":
+            pass
+        elif side == "right":
+            pass
+        else:
+            print("I don’t know if we’ll ever get back home.")  # Error Message
+    else:
+        print("Sometimes I feel like I’m just like a boat upon a winding river, "
+              + "twisting toward an endless black sea. Further and further, drifting "
+              + "away from where I want to be. Who I want to be.")  # Error Message
+
+
+# A function to draw stunned action
+def stunned(who):
+    if who == "me":
+        pass
+    elif who == "other":
+        pass
+    else:
+        print("You shouldn't be here.")  # Error Message
+    sleep(3)
+
+
 # The class for running the UI and handling the game state and messaging the server
 class Client:
     # Class Fields
@@ -69,18 +101,25 @@ class Client:
     can_strike = True
     blocking_left = False
     blocking_right = False
-    ready = False # Does double duty tracking if other player is alive
+    other_blocking_left = False
+    other_blocking_right = False
+    ready = False  # Does double duty tracking if other player is alive
     alive = True
+    clock = [0, 0]  # (local count, server count)
+    s = None
 
     # Class functions
     # This method creates the game client object and gathers needed networking info
     def __init__(self):
         try:
-            file_path = r"server_addresses"
+            file_path = r"server_addresses.txt"
             file = open(file_path, "r")
             self.from_file(file)
         except IOError:
             self.build_self()
+        # Sets up the port
+        self.s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.s.bind((self.address, self.port))
         # Start the listening Thread
         self.listener = Thread(target=self.receive, args=())
         self.listener.start()
@@ -119,8 +158,8 @@ class Client:
 
     # Method to create start up file for next run
     def to_file(self):
-        file = open("server_addresses", 'w+')
-        for address in self.address:
+        file = open("server_addresses.txt", 'w+')
+        for address in self.addresses:
             line = str(address[0]) + ',' + address[1] + ',' + str(address[2])
             file.write(line)
         file.close()
@@ -150,7 +189,7 @@ class Client:
             elif choice == 's':
                 self.block_right()
             else:
-                pass # TODO Put bell sound here
+                winsound.Beep(600, 250)
 
     # A method to decide if a player can strike based on a passed penalty (wait) time
     def timer(self):
@@ -165,36 +204,106 @@ class Client:
     # A method to strike left
     def strike_left(self):
         self.penalties = 1
-        self.blocking_left = False
-        # TODO Send Message Here
+        self.clock[0] += 1
+        self.send_move("strike_left")
 
     # A method to strike right
     def strike_right(self):
         self.penalties = 1
-        self.blocking_right = False
-        # TODO send message here
+        self.clock[0] += 1
+        self.send_move("strike_right")
 
     # A method to block left
     def block_left(self):
         if not self.blocking_left:
-            self.blocking_left = True
-            # TODO send message here
+            self.clock[0] += 1
+            self.send_move("block_left")
 
     # A method to block right
     def block_right(self):
         if not self.blocking_right:
+            self.clock[0] += 1
+            self.send_move("block_right")
+
+    # A method to send a move to the server
+    def send_move(self, action):  # Send relevant data to
+        message = {'time': self.clock,
+                   'action': action,
+                   'name': self.Id,
+                   'alive': self.alive,
+                   'game': self.ready,
+                   'log': None
+                   }
+        message = json.dumps(message)
+        # Send message to all server nodes if game still on
+        if self.alive or self.ready:
+            for i in range(5):
+                self.s.sendto(message.encode('utf-8'), (self.addresses[i][1], self.addresses[i][2]))
+
+    # A method to receive an process incoming info
+    def receive(self):  # Respond to incoming log, may update leader info
+        while True:
+            packet, address = self.s.recvfrom(1024)
+            packet = packet.decode('utf-8')
+            packet = json.loads(packet)
+            if not packet['alive']:
+                self.alive = False
+            if self.Id is None:
+                self.Id = packet['name']
+            self.ready = packet['game']
+            self.clock[1] = packet['time'][1]
+            self.update_log(packet['log'])
+
+    # A method to update the game for this players moves
+    def take_action(self, action):
+        if action == "block_left":
+            self.blocking_left = True
+        elif action == "block_right":
             self.blocking_right = True
-            # TODO send message here
+        elif action == "strike_left":
+            self.blocking_left = False
+        elif action == "strike_right":
+            self.blocking_right = False
+        elif action == "hit_left":
+            kapow("me", "left")
+        elif action == "hit_right":
+            kapow("me", "right")
+        elif action == "stunned":
+            self.penalties = 3
+            stunned("me")
+        else:
+            print("Something is very wrong, you shouldn't be here!")
 
-    def send_move(self): # Send relevant data to
-        pass
+        # A method to update the game for this players moves
+    def others_action(self, action):
+        if action == "block_left":
+            self.other_blocking_left = True
+        elif action == "block_right":
+            self.other_blocking_right = True
+        elif action == "strike_left":
+            self.other_blocking_left = False
+        elif action == "strike_right":
+            self.other_blocking_right = False
+        elif action == "hit_left":
+            kapow("other", "left")
+        elif action == "hit_right":
+            kapow("other", "right")
+        elif action == "stunned":
+            stunned("other")
+        else:
+            print("Something is very wrong, you shouldn't be here!")
 
-    def receive(self): # Respond to incoming log, may update leader info
-        pass
+    # A method to update the local game from a received log
+    def update_log(self, log):
+        for item in log:
+            if item[1] == self.Id:
+                self.take_action(item[2])
+            else:
+                self.others_action(item[2])
 
 
 # The test driver
 if __name__ == '__main__':
-    game_result(True)
-
-
+    client = Client()
+    """Need to finish testing this and the file read in
+    then test the other functions"""
