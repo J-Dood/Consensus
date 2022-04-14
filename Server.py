@@ -30,6 +30,7 @@ class Server:
         self.log = []
         self.commitIndex = 0  # index of highest log entry known to be committed
         self.lastApplied = 0  # index of highest log entry applied to state machine
+        self.timeout = 0
         # Leader Only Fields
         self.leader = False  # set to true if node is leader
         self.nextIndex = [0, 0, 0, 0, 0]  # index of next log entry to send to server
@@ -38,7 +39,6 @@ class Server:
         self.votes = 0
         # Communication Fields
         self.s = None
-        self.timeout = 0
         self.addresses = None
         self.address = None
         self.port = 4000
