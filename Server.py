@@ -175,7 +175,11 @@ class Server:
                         self.fwd_to_leader(packet)
                     if self.leader:
                         # TODO if msg receive from client append entry to local log, respond after entry applied to state machine
-                        self.talk_to_client(packet['name'], packet['clock'][1])
+                        if packet['name'] == "red":
+                            self.clients_clock_red = packet['clock'][1]
+                        elif packet['name'] == "blue":
+                            self.clients_clock_blue = packet['clock'][1]
+                        self.talk_to_client(packet['name'])
 
                 if sender is 'server':
                     if packet['term'] > self.currentTerm:
@@ -305,12 +309,13 @@ class Server:
 
     # Method to handle the messaging to clients if we are leader
     # TODO update this for all situations or create methods and logic for leader to talk to clients
-    def talk_to_client(self, name, knows):
+    def talk_to_client(self, name):
+        clock = [0, self.commitIndex]
         if name == 'red':
-            clock = [0, self.clients_clock_red]
+            knows = self.clients_clock_red
             alive = self.client_alive_red
         elif name == 'blue':
-            clock = [0, self.clients_clock_blue]
+            knows = self.clients_clock_blue
             alive = self.client_alive_blue
         else:
             return
@@ -321,7 +326,7 @@ class Server:
                    'alive': alive,
                    'game': True,
                    'log': log,
-                   'sender': "client"
+                   'sender': "server"
                    }
         for address in self.addresses:
             if address[0] == name:
