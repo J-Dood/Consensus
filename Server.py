@@ -42,6 +42,11 @@ class Server:
         self.addresses = None
         self.address = None
         self.port = 4000
+        # NEWLY ADDED
+        self.clients_clock_red = None  # Start as None until client contact made
+        self.clients_clock_blue = None
+        self.client_alive_red = True
+        self.client_alive_blue = True
 
         # MSG RCV INFO
         # TODO hopefully wont need
@@ -88,6 +93,12 @@ class Server:
         address_book = []
         for i in range(4):
             server_id = int(input("Enter Server ID number 1-5: ").strip())
+            server_address = input("Enter Server address: ").strip()
+            server_port = 4000
+            address_book.append([server_id, server_address, server_port])
+        # Loop to get client info
+        for i in range(2):
+            server_id = input("Enter Server ID red/blue: ").strip()
             server_address = input("Enter Server address: ").strip()
             server_port = 4000
             address_book.append([server_id, server_address, server_port])
@@ -164,7 +175,7 @@ class Server:
                         self.fwd_to_leader(packet)
                     if self.leader:
                         # TODO if msg receive from client append entry to local log, respond after entry applied to state machine
-                        pass
+                        self.talk_to_client(packet['name'], packet['clock'][1])
 
                 if sender is 'server':
                     if packet['term'] > self.currentTerm:
@@ -292,16 +303,51 @@ class Server:
         for server in self.addresses:
             self.s.sendto(message.encode('utf-8'), (self.nodes[server - 1][1], self.nodes[server - 1][2]))
 
-    def talk_to_client(self):
-        # leader should tell client msg was recived
-        pass
+    # Method to handle the messaging to clients if we are leader
+    # TODO update this for all situations or create methods and logic for leader to talk to clients
+    def talk_to_client(self, name, knows):
+        if name == 'red':
+            clock = [0, self.clients_clock_red]
+            alive = self.client_alive_red
+        elif name == 'blue':
+            clock = [0, self.clients_clock_blue]
+            alive = self.client_alive_blue
+        else:
+            return
+        log = self.get_log(knows)
+        message = {'time': clock,
+                   'action': None,
+                   'name': name,
+                   'alive': alive,
+                   'game': True,
+                   'log': log,
+                   'sender': "client"
+                   }
+        for address in self.addresses:
+            if address[0] == name:
+                self.s.sendto(message.encode('utf-8'), (address[1], address[2]))
 
+    # Method to forward a given message from the client to the leader
     def fwd_to_leader(self, item):  # Send request to leader, we do need , fwd to leader
-        # TODO Implement this lol
-        pass
+        message = json.dumps(item)
+        identity = self.leaderID
+        for address in self.addresses:
+            if address[0] == identity:
+                self.s.sendto(message.encode('utf-8'), (address[1], address[2]))
+
+    # Method to return all committed parts of a log back to some number
+    def get_log(self, knows):
+        if self.commitIndex > knows:
+            log = []
+            for i in range(knows, self.commitIndex + 1):
+                log.appent(self.log[i])
+            return log
+        else:
+            return None
 
     # --------------------------------------------------------------------------------------------
     # Methods to do the fake crash and revive options
+    # TODO update to reflect new fields
     # Method to do the 'crashing' of the server
     def crash(self):
         self.alive = False
@@ -331,6 +377,7 @@ class Server:
 
     # --------------------------------------------------------------------------------------------
     # File IO Methods
+    # TODO update to reflect new fields
     # A Method to write to a json File
     def to_json(self):
         dictionary = {

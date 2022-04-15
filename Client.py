@@ -305,6 +305,7 @@ class Client:
             print("Something is very wrong, you shouldn't be here!")
 
     # A method to update the local game from a received log
+    # TODO fix this so it only does NEW events, how to tell???
     def update_log(self, log):
         for item in log:
             if item[1] == self.Id:
@@ -316,4 +317,6 @@ class Client:
 # The test driver
 if __name__ == '__main__':
     client = Client()
+    client.block_left
+
 
