@@ -107,7 +107,7 @@ class Client:
     other_blocking_right = False
     ready = False  # Does double duty tracking if other player is alive
     alive = True
-    clock = [0, 0]  # (local count, server count)
+    clock = [1, 0]  # (local count, server count)
     s = None
 
     # Class functions

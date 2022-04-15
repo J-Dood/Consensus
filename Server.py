@@ -13,6 +13,13 @@ from threading import Thread
 from time import sleep
 import json
 import socket
+import random
+
+
+# Static Methods
+# Method to get a random offset between 1 - 1000 ms
+def rand_offset():
+    return random.randint(1, 1000) / 1000
 
 
 # The Class that acts as a server Node
@@ -47,6 +54,13 @@ class Server:
         self.clients_clock_blue = None
         self.client_alive_red = True
         self.client_alive_blue = True
+        self.has_player = False
+        self.client_count_red = 0
+        self.client_count_blue = 0
+        self.red_left_blocking = False
+        self.red_right_blocking = False
+        self.blue_left_blocking = False
+        self.blue_right_blocking = False
 
         # MSG RCV INFO
         # TODO hopefully wont need
@@ -93,12 +107,6 @@ class Server:
         address_book = []
         for i in range(4):
             server_id = int(input("Enter Server ID number 1-5: ").strip())
-            server_address = input("Enter Server address: ").strip()
-            server_port = 4000
-            address_book.append([server_id, server_address, server_port])
-        # Loop to get client info
-        for i in range(2):
-            server_id = input("Enter Server ID red/blue: ").strip()
             server_address = input("Enter Server address: ").strip()
             server_port = 4000
             address_book.append([server_id, server_address, server_port])
@@ -166,21 +174,11 @@ class Server:
             if self.alive:
                 packet, address = self.s.recvfrom(1024)
                 packet = packet.decode('utf-8')
-                packet = json.loads(packet)
+                packet = json.loads(packet, address)
 
                 sender = packet['sender']
                 if sender is 'client':
-                    # Jordan! TODO look into this, may want to restore past leader from file for this
-                    if not self.leader:
-                        self.fwd_to_leader(packet)
-                    if self.leader:
-                        # TODO if msg receive from client append entry to local log, respond after entry applied to state machine
-                        if packet['name'] == "red":
-                            self.clients_clock_red = packet['clock'][1]
-                        elif packet['name'] == "blue":
-                            self.clients_clock_blue = packet['clock'][1]
-                        self.talk_to_client(packet['name'])
-
+                    self.handle_request(packet)
                 if sender is 'server':
                     if packet['term'] > self.currentTerm:
                         self.currentTerm = packet['term']
@@ -308,7 +306,6 @@ class Server:
             self.s.sendto(message.encode('utf-8'), (self.nodes[server - 1][1], self.nodes[server - 1][2]))
 
     # Method to handle the messaging to clients if we are leader
-    # TODO update this for all situations or create methods and logic for leader to talk to clients
     def talk_to_client(self, name):
         clock = [0, self.commitIndex]
         if name == 'red':
@@ -320,25 +317,22 @@ class Server:
         else:
             return
         log = self.get_log(knows)
-        message = {'time': clock,
-                   'action': None,
-                   'name': name,
-                   'alive': alive,
-                   'game': True,
-                   'log': log,
-                   'sender': "server"
-                   }
-        for address in self.addresses:
-            if address[0] == name:
-                self.s.sendto(message.encode('utf-8'), (address[1], address[2]))
+        info = {'time': clock,
+                'action': None,
+                'name': name,
+                'alive': alive,
+                'game': True,
+                'log': log,
+                'sender': "server"
+                }
+        message = json.dumps(info)
+        self.send_to_client(name, message)
 
     # Method to forward a given message from the client to the leader
     def fwd_to_leader(self, item):  # Send request to leader, we do need , fwd to leader
         message = json.dumps(item)
         identity = self.leaderID
-        for address in self.addresses:
-            if address[0] == identity:
-                self.s.sendto(message.encode('utf-8'), (address[1], address[2]))
+        self.send_to_client(identity, message)
 
     # Method to return all committed parts of a log back to some number
     def get_log(self, knows):
@@ -349,6 +343,142 @@ class Server:
             return log
         else:
             return None
+
+    # Method to handle incoming requests
+    def handle_request(self, packet, address):
+        if self.leader:
+            name = packet['name']
+            clock = packet['clock']
+            if not self.seen(name, clock[0]):
+                action = packet['action']
+                if name == "red":
+                    self.client_count_red = clock[0]
+                    self.clients_clock_red = clock[1]
+                    self.game_logic(name, action)
+                    self.talk_to_client(name)
+                    self.talk_to_client("blue")
+                elif name == "blue":
+                    self.client_count_blue = clock[0]
+                    self.clients_clock_blue = clock[1]
+                    self.game_logic(name, action)
+                    self.talk_to_client(name)
+                    self.talk_to_client("red")
+                else:  # You get here if name is None
+                    self.handle_startup(address)
+            else:
+                pass  # Done if message is duplicate
+        else:
+            self.fwd_to_leader(packet)
+
+    # Method to handle first contact with client
+    def handle_startup(self, address):
+        if self.has_player:
+            self.client_alive_blue = True
+            self.addresses.append(["blue", address[0], address[1]])
+            self.send_comms("red", True)
+            self.send_comms("blue", True)
+        else:
+            self.has_player = True
+            self.client_alive_red = True
+            self.addresses.append(["red", address[0], address[1]])
+            self.send_comms("red", False)
+
+    # Method to handle sending communications to clients
+    def send_comms(self, name, game=True, alive=True):
+        info = {'time': [0, self.commitIndex],
+                'action': None,
+                'name': name,
+                'alive': alive,
+                'game': game,
+                'log': None,
+                'sender': "server"
+                }
+        message = json.dumps(info)
+        self.send_to_client(name, message)
+
+    # Method to send messages to client
+    def send_to_client(self, name, message):
+        for address in self.addresses:
+            if address[0] == name:
+                self.s.sendto(message.encode('utf-8'), (address[1], address[2]))
+                break
+
+    # Method to decide if a message has been seen previously
+    def seen(self, name, request):
+        if name == "red":
+            return request <= self.client_count_red
+        elif name == "blue":
+            return request <= self.client_count_blue
+        else:
+            print("Error: name sent to seen() not valid")
+            return True
+
+    # --------------------------------------------------------------------------------------------
+    # Methods to do the game logic
+    # Method to handle the game logic on the server side
+    def game_logic(self, player, action):
+        # TODO Log initial action and secondary actions as ONE, must succeed or fail together!!!
+        # TODO Need to know if actions are committed prior to changing game states.
+        if player == "red":
+            if action == "block_left":
+                self.red_left_blocking = True  # TODO Need confirmation of committed block prior to this
+            elif action == "block_right":
+                self.red_right_blocking = True  # TODO Need confirmation of committed block prior to this
+            elif action == "strike_left":
+                self.red_left_blocking = False  # TODO Need confirmation of committed block prior to this
+                result = self.strike("blue", self.blue_right_blocking, False)
+                if result == "stunned":
+                    pass  # TODO Log actions!
+                else:
+                    pass  # TODO Log actions!
+            elif action == "strike_right":
+                self.red_right_blocking = False  # TODO Need confirmation of committed block prior to this
+                result = self.strike("blue", self.blue_left_blocking, True)
+                if result == "stunned":
+                    pass  # TODO Log actions!
+                else:
+                    pass  # TODO Log actions!
+            else:  # Should never get here
+                print("Invalid Move!")
+        elif player == "blue":
+            if action == "block_left":
+                self.blue_left_blocking = True  # TODO Need confirmation of committed block prior to this
+            elif action == "block_right":
+                self.blue_right_blocking = True  # TODO Need confirmation of committed block prior to this
+            elif action == "strike_left":
+                self.blue_left_blocking = False  # TODO Need confirmation of committed block prior to this
+                result = self.strike("red", self.red_right_blocking, False)
+                if result == "stunned":
+                    pass  # TODO Log actions!
+                else:
+                    pass  # TODO Log actions!
+            elif action == "strike_right":
+                self.blue_right_blocking = False  # TODO Need confirmation of committed block prior to this
+                result = self.strike("red", self.red_left_blocking, True)
+                if result == "stunned":
+                    pass  # TODO Log actions!
+                else:
+                    pass  # TODO Log actions!
+            else:  # Should never get here
+                print("Invalid Move!")
+        else:  # Should never get here
+            print("Invalid Username!")
+
+    # Method to decide outcome of a strike
+    def strike(self, name, blocking, left):
+        # If you are blocked you get stunned
+        if blocking:
+            return "stunned"
+        else:
+            if random.randint(0, 10) == 5:  # One in ten chance of kill
+                if name == "red":
+                    self.client_alive_red = False
+                else:
+                    self.client_alive_blue = False
+            if left:
+                return "hit_left"
+            else:
+                return "hit_right"
 
     # --------------------------------------------------------------------------------------------
     # Methods to do the fake crash and revive options
