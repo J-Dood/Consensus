@@ -8,6 +8,7 @@
 #   4) Running a UI capable of causing 'crash', 'restore', and 'timeout' functions
 
 # Imports
+from importlib.abc import TraversableResources
 from os.path import exists
 from threading import Thread
 from time import sleep
@@ -150,16 +151,13 @@ class Server:
                         file.close()
                 # TODO fix
                 if self.leader:  # leader only shit
-                    if self.heartbeat is 0:  # could election timer doubel as heartbeat timer?
-                        # TODO - fix timer
-                        # TODO - logupdates will either be empty, if its just a heartbeat or will have updates if we got a msg from client
-                        logupdates = []
+                    if self.timeout is 0:     # TODO - fix timer
                         msg = {'type': 'append entries', 'term': self.currentTerm, 'leaderID': self.id,
-                               'prevLogIndex': (len(self.log) - 1),
-                               'prevLogTerm': self.log[(len(self.log) - 1)], 'entries': logupdates,
+                               'prevLogIndex': min(self.nextIndex),
+                               'prevLogTerm': self.log[min(self.nextIndex)], 'entries': self.log[min(self.nextIndex): (len(self.log) - 1)],
                                'leaderCommit': self.commitIndex}
                         self.send(msg)
-                    # TODO if N > commit index.. what is N???
+                    self.leader_commit_index()
                 if self.timeout is 0 and self.alive:  # candidate time
                     self.leader_election()
                     if self.electionTimer is 0:
@@ -167,6 +165,24 @@ class Server:
                         self.electionTimer = 'reset'  # TODO TIMER HELP
             else:  # When 'crashed' (not self.alive) this keeps us quiet in the infinite loop
                 sleep(1)
+
+    def leader_commit_index(self):
+        for n in range(self.commitIndex, self.commitIndex+10):
+            a, b, c = False
+            counter = 0
+            if n > self.commitIndex:
+                a = True
+            for i in self.matchIndex:
+                if self.matchIndex[i] >= n:
+                    counter += 1
+            if counter >= 3:
+                b = True
+            if self.log[n].term == self.currentTerm: #TODO log needs terms
+                c = True
+            if a and b and c:
+                self.commitIndex = n
+                break
+
 
     # Loop Method to handle incoming messages
     def receive(self):
@@ -345,6 +361,7 @@ class Server:
             return None
 
     # Method to handle incoming requests
+    # TODO, we need to append the client message to the log if we are the leader - self.log.append(msg)
     def handle_request(self, packet, address):
         if self.leader:
             name = packet['name']
