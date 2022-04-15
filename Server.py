@@ -308,6 +308,9 @@ class Server:
     # Method to handle the messaging to clients if we are leader
     def talk_to_client(self, name):
         clock = [0, self.commitIndex]
+        game = True
+        if not self.client_alive_red or not self.client_alive_blue:
+            game = False
         if name == 'red':
             knows = self.clients_clock_red
             alive = self.client_alive_red
@@ -315,13 +318,14 @@ class Server:
             knows = self.clients_clock_blue
             alive = self.client_alive_blue
         else:
+            print("Invalid Username passed to talk_to_client()")
             return
         log = self.get_log(knows)
         info = {'time': clock,
                 'action': None,
                 'name': name,
                 'alive': alive,
-                'game': True,
+                'game': game,
                 'log': log,
                 'sender': "server"
                 }
@@ -419,11 +423,14 @@ class Server:
     def game_logic(self, player, action):
         # TODO Log initial action and secondary actions as ONE, must succeed or fail together!!!
         # TODO Need to know if actions are committed prior to changing game states.
-        if player == "red":
+        if player == "red":  # Player "red" did.....
+            # Block
             if action == "block_left":
                 self.red_left_blocking = True  # TODO Need confirmation of committed block prior to this
             elif action == "block_right":
                 self.red_right_blocking = True  # TODO Need confirmation of committed block prior to this
+
+            # Strike
             elif action == "strike_left":
                 self.red_left_blocking = False  # TODO Need confirmation of committed block prior to this
                 result = self.strike("blue", self.blue_right_blocking, False)
@@ -440,11 +447,15 @@ class Server:
                     pass  # TODO Log actions!
             else:  # Should never get here
                 print("Invalid Move!")
-        elif player == "blue":
+
+        elif player == "blue":  # Player "blue" did.....
+            # Block
             if action == "block_left":
                 self.blue_left_blocking = True  # TODO Need confirmation of committed block prior to this
             elif action == "block_right":
                 self.blue_right_blocking = True  # TODO Need confirmation of committed block prior to this
+
+            # Strike
             elif action == "strike_left":
                 self.blue_left_blocking = False  # TODO Need confirmation of committed block prior to this
                 result = self.strike("red", self.red_right_blocking, False)
@@ -461,6 +472,7 @@ class Server:
                     pass  # TODO Log actions!
             else:  # Should never get here
                 print("Invalid Move!")
+
         else:  # Should never get here
             print("Invalid Username!")
 
