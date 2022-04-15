@@ -39,6 +39,9 @@ class Server:
         self.commitIndex = 0  # index of highest log entry known to be committed
         self.lastApplied = 0  # index of highest log entry applied to state machine
         self.timeout = 0
+        self.electionTime = 6
+        self.timeoutTime = 3 + random.random()
+        self.heartbeatTime = 1
         # Leader Only Fields
         self.leader = False  # set to true if node is leader
         self.nextIndex = [0, 0, 0, 0, 0]  # index of next log entry to send to server
@@ -89,15 +92,9 @@ class Server:
         # Start the sending Thread
         self.sender = Thread(target=self.run, args=())
         self.sender.start()
-        # TODO TIMER HELP
         # Start the time Thread
         self.timer = Thread(target=self.timer, args=())
         self.timer.start()
-        self.timeoutReset = None  # TODO not sure what this does, Jordan
-        # start election timer thread
-        self.election_timer = Thread(target=self.election_timer, args=())
-        self.election_timer.start()
-        self.electionTimerReset = None  # TODO not sure what this does, Jordan
         # start UI thread
         self.input_loop = Thread(target=self.user_input_loop, args=())
         self.input_loop.start()
@@ -128,7 +125,7 @@ class Server:
         while True:
             choice = input(">").strip().lower()
             if choice == '1':  # Timeout
-                self.timer = 0
+                self.timeout = 0
             elif choice == '2':  # Crash
                 self.crash()
             elif choice == '3':  # Restart
@@ -136,7 +133,6 @@ class Server:
             else:
                 print("Option not recognized, try again.\n")
                 print("Choose:\n[1] Timeout\n[2] Crash\n[3] Restart")
-                # TODO probably need to do more here? like reset timer? and talk to other nodes idk
 
     # Loop Method to run the main server
     def server_loop(self):
@@ -151,7 +147,7 @@ class Server:
                         file.close()
                 # TODO fix
                 if self.leader:  # leader only shit
-                    if self.timeout is 0:     # TODO - fix timer
+                    if self.timeout is 0:  
                         msg = {'type': 'append entries', 'term': self.currentTerm, 'leaderID': self.id,
                                'prevLogIndex': min(self.nextIndex),
                                'prevLogTerm': self.log[min(self.nextIndex)], 'entries': self.log[min(self.nextIndex): (len(self.log) - 1)],
@@ -160,9 +156,9 @@ class Server:
                     self.leader_commit_index()
                 if self.timeout is 0 and self.alive:  # candidate time
                     self.leader_election()
-                    if self.electionTimer is 0:
+                    if self.timeout is 0: #TODO might actually need eleciton timer separate from timeout
                         self.leader_election()
-                        self.electionTimer = 'reset'  # TODO TIMER HELP
+                        self.timeout = self.electionTime 
             else:  # When 'crashed' (not self.alive) this keeps us quiet in the infinite loop
                 sleep(1)
 
@@ -245,22 +241,12 @@ class Server:
             else:  # When 'crashed' (not self.alive) this keeps us quiet in the infinite loop
                 sleep(1)
 
-    # Method to run election timer
-    def election_timer(self):
-        while True:
-            if self.alive:
-                if self.electionTimer != 0:
-                    sleep(1)
-                    self.electionTimer -= 1
-            else:  # When 'crashed' (not self.alive) this keeps us quiet in the infinite loop
-                sleep(1)
-
     # --------------------------------------------------------------------------------------------
     # Methods To Assist Server Function
     # This Method appends the received entries
     def append_entries(self, term, leaderID, prevLogIndex, prevLogTerm, entries,
                        leaderCommit):  # For leader, appends entries, heartbeat $$$$$$$$$$$$$$
-        # TODO TIMER FIX add heartbeat functionality aka- reset timeout
+        self.timeout = self.timeoutTime
         success = True
         indexOfLastNewEntry = len(self.log) - 1
         if term < self.currentTerm:
@@ -299,11 +285,11 @@ class Server:
     def leader_election(self):
         self.votes = 1
         self.currentTerm += 1
-        self.electionTimer == 'reset'  # TODO TIMER actually reset
+        self.timeout == self.electionTime 
         msg = {'sender': 'server', 'type': 'request vote', 'term': self.currentTerm, 'candidateID': self.id,
                'lastLogIndex': (len(self.log) - 1), 'lastLogTerm': self.log[(len(self.log) - 1)]}
         self.send(json.dumps(msg))
-        while self.electionTimer != 0:
+        while self.timeout != 0:
             if self.votes >= 3:
                 self.leader = True
 
