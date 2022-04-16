@@ -9,7 +9,7 @@
 
 # Imports
 from importlib.abc import TraversableResources
-from os.path import exists
+from os.path import existsgit
 from threading import Thread
 from time import sleep
 import json
@@ -65,11 +65,6 @@ class Server:
         self.red_right_blocking = False
         self.blue_left_blocking = False
         self.blue_right_blocking = False
-
-        # MSG RCV INFO
-        # TODO hopefully wont need
-        self.from_msg_term = 0
-        self.from_msg_id = 0
 
         # Code to try and read in network info from saved file
         # If file exists use information within
@@ -145,6 +140,7 @@ class Server:
                             file.write(str(lines))
                             file.write("\n")
                         file.close()
+                        self.to_json()
                 if self.leader:  # leader only shit
                     if self.timeout is 0:  
                         msg = {'type': 'append entries', 'term': self.currentTerm, 'leaderID': self.id,
