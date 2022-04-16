@@ -433,7 +433,8 @@ class Server:
     # Methods to do the game logic
     # Method to handle the game logic on the server side
     def game_logic(self, player, action):
-        self.log.append([self.currentTerm, player, action])
+        self.log.append([self.currentTerm, player, action, self.lastApplied])
+        self.lastApplied += 1
         if player == "red":  # Player "red" did.....
             # Block
             if action == "block_left":
@@ -446,16 +447,20 @@ class Server:
                 self.red_left_blocking = False
                 result = self.strike("blue", self.blue_right_blocking, False)
                 if result == "stunned":
-                    self.log.append([self.currentTerm, 'red', 'stunned'])
+                    self.log.append([self.currentTerm, 'red', 'stunned', self.lastApplied])
+                    self.lastApplied += 1
                 else:
-                    self.log.append([self.currentTerm, 'blue', 'hit_right'])
+                    self.log.append([self.currentTerm, 'blue', 'hit_right', self.lastApplied])
+                    self.lastApplied += 1
             elif action == "strike_right":
                 self.red_right_blocking = False
                 result = self.strike("blue", self.blue_left_blocking, True)
                 if result == "stunned":
-                    self.log.append([self.currentTerm, 'red', 'stunned'])
+                    self.log.append([self.currentTerm, 'red', 'stunned', self.lastApplied])
+                    self.lastApplied += 1
                 else:
-                    self.log.append([self.currentTerm, 'blue', 'hit_left'])
+                    self.log.append([self.currentTerm, 'blue', 'hit_left', self.lastApplied])
+                    self.lastApplied += 1
             else:  # Should never get here
                 print("Invalid Move!")
 
@@ -471,16 +476,20 @@ class Server:
                 self.blue_left_blocking = False
                 result = self.strike("red", self.red_right_blocking, False)
                 if result == "stunned":
-                    self.log.append([self.currentTerm, 'blue', 'stunned'])
+                    self.log.append([self.currentTerm, 'blue', 'stunned', self.lastApplied])
+                    self.lastApplied += 1
                 else:
-                    self.log.append([self.currentTerm, 'red', 'hit_right'])
+                    self.log.append([self.currentTerm, 'red', 'hit_right', self.lastApplied])
+                    self.lastApplied += 1
             elif action == "strike_right":
                 self.blue_right_blocking = False
                 result = self.strike("red", self.red_left_blocking, True)
                 if result == "stunned":
-                    self.log.append([self.currentTerm, 'blue', 'stunned'])
+                    self.log.append([self.currentTerm, 'blue', 'stunned', self.lastApplied])
+                    self.lastApplied += 1
                 else:
-                    self.log.append([self.currentTerm, 'red', 'hit_left'])
+                    self.log.append([self.currentTerm, 'red', 'hit_left', self.lastApplied])
+                    self.lastApplied += 1
             else:  # Should never get here
                 print("Invalid Move!")
 
@@ -506,6 +515,7 @@ class Server:
     # Method to compile the game state in a dictionary
     def get_game_state(self):
         dictionary = {
+            'last': self.lastApplied,
             'clients_clock_red': self.clients_clock_red,
             'clients_clock_blue': self.clients_clock_blue,
             'client_alive_red': self.client_alive_red,
@@ -522,6 +532,7 @@ class Server:
 
     # Method to update the game state from a dictionary
     def update_game_state(self, dictionary):
+        self.lastApplied = dictionary['last']
         self.clients_clock_red = dictionary['clients_clock_red']
         self.clients_clock_blue = dictionary['clients_clock_blue']
         self.client_alive_red = dictionary['client_alive_red']
