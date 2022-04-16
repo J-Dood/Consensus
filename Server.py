@@ -102,13 +102,15 @@ class Server:
             server_port = 4000
             address_book.append([server_id, server_address, server_port])
         self.addresses = address_book
-        self.client_info()
+        self.addresses.append(self.client_info())
         self.to_file()
 
     # This method collects and sets the address and port for this client instance
     def client_info(self):
         self.address = input("Enter your IP address: ").strip()
         self.port = int(input("Enter your preferred port: ").strip())
+        self.id = int(input("Enter which process you are: ").strip())
+        return [self.id, self.address, self.port]
 
     # --------------------------------------------------------------------------------------------
     # The Loop Methods used to run the Server UI, Main Server, and Listener
@@ -207,13 +209,12 @@ class Server:
     # --------------------------------------------------------------------------------------------
     # The Timer Methods
     # Method to leader heartbeat waiting timer
-    # TODO May want different timeout scale (ms?)
     def timer(self):
         # leader does not time out, they only die, so we need to be mindful of that
         while True:
             if self.alive:
                 if self.timeout != 0:
-                    sleep(.1)
+                    sleep(0.1)
                     self.timeout -= 1
             else:  # When 'crashed' (not self.alive) this keeps us quiet in the infinite loop
                 sleep(1)
@@ -262,7 +263,7 @@ class Server:
     def leader_election(self):
         self.votes = 1
         self.currentTerm += 1
-        self.timeout == self.electionTime 
+        self.timeout = self.electionTime
         msg = {'sender': 'server', 'type': 'request vote', 'term': self.currentTerm, 'candidateID': self.id,
                'lastLogIndex': (len(self.log) - 1), 'lastLogTerm': self.log[(len(self.log) - 1)]}
         self.send(json.dumps(msg))
@@ -299,7 +300,10 @@ class Server:
             # send only to leader, or candidate, use 'destination' to determine who
             pass
         for server in self.addresses:
-            self.s.sendto(message.encode('utf-8'), (self.nodes[server - 1][1], self.nodes[server - 1][2]))
+            if server[0] == 'red' or server[0] == 'blue' or server[0] == self.id:
+                continue
+            else:
+                self.s.sendto(message.encode('utf-8'), (self.nodes[server - 1][1], self.nodes[server - 1][2]))
 
     # Method to handle the messaging to clients if we are leader
     def talk_to_client(self, name):
@@ -345,7 +349,6 @@ class Server:
             return None
 
     # Method to handle incoming requests
-    # TODO, we need to append the client message to the log if we are the leader - self.log.append(msg)
     def handle_request(self, packet, address):
         if self.leader:
             name = packet['name']
