@@ -37,7 +37,7 @@ class Server:
         self.log = []
         self.commitIndex = 0  # index of highest log entry known to be committed
         self.lastApplied = 1  # index of highest log entry applied to state machine
-        self.timeout = rand_offset()
+        self.timeout = 0
         self.electionTime = 6
         self.timeoutTime = 3 + rand_offset()
         self.heartbeatTime = 1
@@ -81,17 +81,11 @@ class Server:
         self.s.bind((self.address, self.port))
 
         # Set up of the Treads
-        # # Start the time Thread
-        # self.timer = Thread(target=self.timer, args=())
-        # self.timer.start()
-        # # start UI thread
-        # self.input_loop = Thread(target=self.user_input_loop, args=())
-        # self.input_loop.start()
         # Start the listening Thread
         self.listener = Thread(target=self.receive_loop, args=())
         self.listener.start()
         # Start the time Thread
-        self.time_keeper = Thread(target=self.timer(), args=())
+        self.time_keeper = Thread(target=self.timer, args=())
         self.time_keeper.start()
         # start UI thread
         self.input_loop = Thread(target=self.user_input_loop, args=())
@@ -235,7 +229,7 @@ class Server:
             if self.alive:
                 if self.timeout != 0:
                     sleep(0.1)
-                    self.timeout -= 1
+                    self.timeout -= 0.1
             else:  # When 'crashed' (not self.alive) this keeps us quiet in the infinite loop
                 sleep(1)
 
@@ -281,6 +275,7 @@ class Server:
                 return False  # log was not up-to-date
 
     def leader_election(self):
+        print('hey leader election')
         self.votes = 1
         self.currentTerm += 1
         self.timeout = self.electionTime
