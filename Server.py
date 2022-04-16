@@ -36,7 +36,7 @@ class Server:
         self.votedFor = None  # candidateID that received vote in current term
         self.log = []
         self.commitIndex = 0  # index of highest log entry known to be committed
-        self.lastApplied = 0  # index of highest log entry applied to state machine
+        self.lastApplied = 1  # index of highest log entry applied to state machine
         self.timeout = rand_offset()
         self.electionTime = 6
         self.timeoutTime = 3 + rand_offset()
@@ -91,8 +91,8 @@ class Server:
         self.listener = Thread(target=self.receive_loop, args=())
         self.listener.start()
         # Start the time Thread
-        self.timer = Thread(target=self.timer, args=())
-        self.timer.start()
+        self.time_keeper = Thread(target=self.timer(), args=())
+        self.time_keeper.start()
         # start UI thread
         self.input_loop = Thread(target=self.user_input_loop, args=())
         self.input_loop.start()
@@ -265,12 +265,12 @@ class Server:
             self.leaderID = leaderID
         return success
 
-    def request_vote(self, term, candidateID, lastLogIndex, lastLogTerm):
+    def request_vote(self, term, candidate_ID, lastLogIndex, lastLogTerm):
         if self.leader:
             return False
         if term < self.currentTerm:
             return False
-        if self.votedFor is None or self.votedFor is candidateID:
+        if self.votedFor is None or self.votedFor is candidate_ID:
             try:
                 if self.log[lastLogIndex] == lastLogTerm:
                     self.currentTerm = term
@@ -317,20 +317,19 @@ class Server:
 
     # --------------------------------------------------------------------------------------------
     # Methods to handle sending and receiving messages in support of Receiving Loop (above)
-    # TODO - from dislog - modify for this one
-    def send(self, message, toAllServers=True, destination=None):
+    def send(self, message, to_all_servers=True, destination=None):
         # self.log.append(((self.id, self.get_stamp()), "send", None))
-        if toAllServers:
-            for server in self.addresses:
-                if server[0] == 'red' or server[0] == 'blue' or server[0] == self.id:
+        if to_all_servers:
+            for node in self.addresses:
+                if node[0] == 'red' or node[0] == 'blue' or node[0] == self.id:
                     continue
                 else:
                     # tempSensorSocket.sendto(tempString.encode(), ("127.0.0.1",7070))
-                    self.s.sendto(message.encode('utf-8'), (server[1], int(server[2])))
+                    self.s.sendto(message.encode('utf-8'), (node[1], int(node[2])))
         else:
-            for server in self.addresses:
-                if server[0] is destination:
-                    self.s.sendto(message.encode('utf-8'), (server[1], int(server[2])))
+            for node in self.addresses:
+                if node[0] is destination:
+                    self.s.sendto(message.encode('utf-8'), (node[1], int(node[2])))
                     break
 
     # Method to handle the messaging to clients if we are leader
@@ -371,7 +370,7 @@ class Server:
         if self.commitIndex > knows:
             log = []
             for i in range(knows, self.commitIndex + 1):
-                log.appent(self.log[i])
+                log.append(self.log[i])
             return log
         else:
             return None
@@ -563,7 +562,6 @@ class Server:
 
     # --------------------------------------------------------------------------------------------
     # Methods to do the fake crash and revive options
-    # TODO update to reflect new fields
     # Method to do the 'crashing' of the server
     def crash(self):
         self.alive = False
@@ -604,7 +602,6 @@ class Server:
 
     # --------------------------------------------------------------------------------------------
     # File IO Methods
-    # TODO update to reflect new fields
     # A Method to write to a json File
     def to_json(self):
         dictionary = {
