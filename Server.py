@@ -26,10 +26,10 @@ class Server:
     # --------------------------------------------------------------------------------------------
     # Methods for initializing and constructing the server node object
     # Initializing Method
-    def __init__(self, identity):
+    def __init__(self):
         # Node Fields
         self.alive = True
-        self.id = identity  # Should be an int
+        # self.id = None  # Should be an int
         self.leaderID = None
         self.currentTerm = 0  # latest term server has seen
         self.votedFor = None  # candidateID that received vote in current term
@@ -84,8 +84,8 @@ class Server:
         self.listener = Thread(target=self.receive, args=())
         self.listener.start()
         # Start the sending Thread
-        self.sender = Thread(target=self.run, args=())
-        self.sender.start()
+        self.server = Thread(target=self.server_loop(), args=())
+        self.server.start()
         # Start the time Thread
         self.timer = Thread(target=self.timer, args=())
         self.timer.start()
@@ -97,17 +97,19 @@ class Server:
     def build_self(self):
         print("The start up file was not found, please enter values manually.")
         address_book = []
+        # self.id = "Enter Personal ID number 1-5:"
+        personal_info = self.personal_info()
         for i in range(4):
             server_id = int(input("Enter Server ID number 1-5: ").strip())
             server_address = input("Enter Server address: ").strip()
-            server_port = 4000
+            server_port = input("Enter Port address: ").strip()
             address_book.append([server_id, server_address, server_port])
         self.addresses = address_book
-        self.addresses.append(self.client_info())
+        self.addresses.append(personal_info)
         self.to_file()
 
     # This method collects and sets the address and port for this client instance
-    def client_info(self):
+    def personal_info(self):
         self.address = input("Enter your IP address: ").strip()
         self.port = int(input("Enter your preferred port: ").strip())
         self.id = int(input("Enter which process you are: ").strip())
@@ -147,7 +149,7 @@ class Server:
                         msg = {'type': 'append entries', 'term': self.currentTerm, 'leaderID': self.id,
                                'prevLogIndex': min(self.nextIndex),
                                'prevLogTerm': self.log[min(self.nextIndex)], 'entries': self.log[min(self.nextIndex): (len(self.log) - 1)],
-                               'leaderCommit': self.commitIndex}
+                               'leaderCommit': self.commitIndex, 'sender': 'server'}
                         self.send(msg)
                     self.leader_commit_index()
                 if self.timeout == 0 and self.alive:  # candidate time
@@ -259,8 +261,12 @@ class Server:
         self.votes = 1
         self.currentTerm += 1
         self.timeout = self.electionTime
+        if bool(self.log):
+            lastlogterm = self.log[self.commitIndex]
+        else:
+            lastlogterm = None
         msg = {'sender': 'server', 'type': 'request vote', 'term': self.currentTerm, 'candidateID': self.id,
-               'lastLogIndex': (len(self.log) - 1), 'lastLogTerm': self.log[(len(self.log) - 1)]}
+               'lastLogIndex': self.commitIndex, 'lastLogTerm': lastlogterm}
         self.send(json.dumps(msg))
         while self.timeout != 0:
             if self.votes >= 3:
@@ -294,11 +300,11 @@ class Server:
                     continue
                 else:
                     # tempSensorSocket.sendto(tempString.encode(), ("127.0.0.1",7070))
-                    self.s.sendto(message.encode('utf-8'), (server[1], server[2]))
+                    self.s.sendto(message.encode('utf-8'), (server[1], int(server[2])))
         else:
             for server in self.addresses:
                 if server[0] is destination:
-                    self.s.sendto(message.encode('utf-8'), (server[1], server[2]))
+                    self.s.sendto(message.encode('utf-8'), (server[1], int(server[2])))
                     break
 
     # Method to handle the messaging to clients if we are leader
@@ -577,7 +583,7 @@ class Server:
         for line in file:
             address = line.strip().split(',')
             if address[0] != str(self.id):
-                address_book.append([int(address[0]), address[1], int(address[2])])
+                address_book.append([address[0], address[1], address[2]])
             else:
                 self.address = address[1]
                 self.port = int(address[2])
@@ -593,3 +599,7 @@ class Server:
         line = str(self.id) + ',' + str(self.address) + ',' + str(self.port) + "\n"
         file.write(line)
         file.close()
+
+if __name__ == '__main__':
+     server = Server()
+
