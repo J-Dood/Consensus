@@ -565,7 +565,7 @@ class Server:
 
     # A method to write the log to a human readable file
     def to_log(self):
-        file = open("server_log.txt", 'w+')
+        file = open("server_log" + str(self.id) + ".txt", 'w+')
         for item in self.log:
             line = str(item) + "\n"
             file.write(line)
@@ -586,7 +586,7 @@ class Server:
 
     # Method to create start up file for next run
     def to_file(self):
-        file = open("server_addresses.txt", 'w+')
+        file = open("server_addresses" + str(self.id) + ".txt", 'w+')
         for address in self.addresses:
             line = str(address[0]) + ',' + address[1] + ',' + str(address[2]) + "\n"
             file.write(line)
