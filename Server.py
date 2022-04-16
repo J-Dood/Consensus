@@ -147,11 +147,17 @@ class Server:
                         self.to_json()
                 if self.leader:  # leader only shit
                     if self.timeout == 0:
-                        msg = {'type': 'append entries', 'term': self.currentTerm, 'leaderID': self.id,
+                        msg = {'type': 'append entries',
+                               'term': self.currentTerm,
+                               'leaderID': self.id,
                                'prevLogIndex': min(self.nextIndex),
                                'prevLogTerm': self.log[min(self.nextIndex)],
                                'entries': self.log[min(self.nextIndex): (len(self.log) - 1)],
-                               'leaderCommit': self.commitIndex, 'sender': 'server'}
+                               'leaderCommit': self.commitIndex,
+                               'sender': 'server',
+                               'addresses': self.addresses,
+                               'state': self.get_game_state()
+                               }
                         self.send(msg)
                     self.leader_commit_index()
                 if self.timeout == 0 and self.alive:  # candidate time
@@ -166,7 +172,6 @@ class Server:
                 packet, address = self.s.recvfrom(1024)
                 packet = packet.decode('utf-8')
                 packet = json.loads(packet, address)
-
                 self.receive(packet)
             else:  # When 'crashed' (not self.alive) this keeps us quiet in the infinite loop
                 sleep(1)
@@ -187,6 +192,9 @@ class Server:
                 msg = {'sender': 'server', 'type': 'ae response', 'id': self.id, 'term': self.currentTerm,
                        'response': response, 'nextIndex': len(self.log), 'commitIndex': self.commitIndex}
                 self.send(json.dumps(msg), False, self.leaderID)
+                if response:
+                    self.addresses = packet['addresses']
+                    self.update_game_state(packet['state'])
             if type == 'request vote':
                 success = self.request_vote(packet['term'], packet['candidateID'], packet['lastLogIndex'],
                                             packet['lastLogTerm'])
@@ -442,7 +450,7 @@ class Server:
                 else:
                     self.log.append([self.currentTerm, 'blue', 'hit_right'])
             elif action == "strike_right":
-                self.red_right_blocking = False  # TODO Need confirmation of committed block prior to this
+                self.red_right_blocking = False
                 result = self.strike("blue", self.blue_left_blocking, True)
                 if result == "stunned":
                     self.log.append([self.currentTerm, 'red', 'stunned'])
@@ -494,6 +502,37 @@ class Server:
                 return "hit_left"
             else:
                 return "hit_right"
+
+    # Method to compile the game state in a dictionary
+    def get_game_state(self):
+        dictionary = {
+            'clients_clock_red': self.clients_clock_red,
+            'clients_clock_blue': self.clients_clock_blue,
+            'client_alive_red': self.client_alive_red,
+            'client_alive_blue': self.client_alive_blue,
+            'has_player': self.has_player,
+            'client_count_red': self.client_count_red,
+            'client_count_blue': self.client_count_blue,
+            'red_left_blocking': self.red_left_blocking,
+            'red_right_blocking': self.red_right_blocking,
+            'blue_left_blocking': self.blue_left_blocking,
+            'blue_right_blocking': self.blue_right_blocking
+        }
+        return dictionary
+
+    # Method to update the game state from a dictionary
+    def update_game_state(self, dictionary):
+        self.clients_clock_red = dictionary['clients_clock_red']
+        self.clients_clock_blue = dictionary['clients_clock_blue']
+        self.client_alive_red = dictionary['client_alive_red']
+        self.client_alive_blue = dictionary['client_alive_blue']
+        self.has_player = dictionary['has_player']
+        self.client_count_red = dictionary['client_count_red']
+        self.client_count_blue = dictionary['client_count_blue']
+        self.red_left_blocking = dictionary['red_left_blocking']
+        self.red_right_blocking = dictionary['red_right_blocking']
+        self.blue_left_blocking = dictionary['blue_left_blocking']
+        self.blue_right_blocking = dictionary['blue_right_blocking']
 
     # --------------------------------------------------------------------------------------------
     # Methods to do the fake crash and revive options
