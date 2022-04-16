@@ -542,7 +542,7 @@ class Server:
     def to_json(self):
         dictionary = {
             'log': self.log,
-            'leaderID': self.leaderID,  # May not need
+            'leaderID': self.leaderID,
             'currentTerm': self.currentTerm,
             'voterFor': self.votedFor,
             'commitIndex': self.commitIndex,
