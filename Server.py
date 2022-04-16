@@ -37,7 +37,7 @@ class Server:
         self.log = []
         self.commitIndex = 0  # index of highest log entry known to be committed
         self.lastApplied = 0  # index of highest log entry applied to state machine
-        self.timeout = 0
+        self.timeout = rand_offset()
         self.electionTime = 6
         self.timeoutTime = 3 + rand_offset()
         self.heartbeatTime = 1
@@ -81,18 +81,24 @@ class Server:
         self.s.bind((self.address, self.port))
 
         # Set up of the Treads
+        # # Start the time Thread
+        # self.timer = Thread(target=self.timer, args=())
+        # self.timer.start()
+        # # start UI thread
+        # self.input_loop = Thread(target=self.user_input_loop, args=())
+        # self.input_loop.start()
         # Start the listening Thread
         self.listener = Thread(target=self.receive_loop, args=())
         self.listener.start()
-        # Start the sending Thread
-        self.server = Thread(target=self.server_loop(), args=())
-        self.server.start()
         # Start the time Thread
         self.timer = Thread(target=self.timer, args=())
         self.timer.start()
         # start UI thread
         self.input_loop = Thread(target=self.user_input_loop, args=())
         self.input_loop.start()
+        # Start the sending Thread
+        self.server = Thread(target=self.server_loop, args=())
+        self.server.start()
 
     # This method gathers needed network info from the user if file not found
     def build_self(self):
@@ -137,17 +143,18 @@ class Server:
     def server_loop(self):
         while True:
             if self.alive:
+                #sleep(.1)
                 if self.timeout != 0 or self.leader:  # everyone does this
-                    if self.commitIndex > self.lastApplied:
-                        file = open("log" + str(self.id) + ".txt", "w+")
-                        for lines in self.log:
-                            file.write(str(lines))
-                            file.write("\n")
-                        file.close()
-                        self.to_json()
+                    # if self.commitIndex > self.lastApplied:
+                    file = open("log" + str(self.id) + ".txt", "w+")
+                    for lines in self.log:
+                        file.write(str(lines))
+                        file.write("\n")
+                    file.close()
+                    self.to_json()
                 if self.leader:  # leader only shit
                     if self.timeout == 0:
-                        msg = {'type': 'append entries', 'term': self.currentTerm, 'leaderID': self.id,
+                        msg = {'type': 'append entries', 'term': self.currentTerm, 'id': self.id,
                                'prevLogIndex': min(self.nextIndex),
                                'prevLogTerm': self.log[min(self.nextIndex)],
                                'entries': self.log[min(self.nextIndex): (len(self.log) - 1)],
@@ -159,13 +166,14 @@ class Server:
             else:  # When 'crashed' (not self.alive) this keeps us quiet in the infinite loop
                 sleep(1)
 
+
     # Loop Method to handle incoming messages
     def receive_loop(self):
         while True:
             if self.alive:
                 packet, address = self.s.recvfrom(1024)
                 packet = packet.decode('utf-8')
-                packet = json.loads(packet, address)
+                packet = json.loads(packet)
 
                 self.receive(packet)
             else:  # When 'crashed' (not self.alive) this keeps us quiet in the infinite loop
@@ -182,18 +190,21 @@ class Server:
                 self.leaderID = packet['id']
             type = packet['type']
             if type == 'append entries':
-                response = self.append_entries(packet['term'], packet['leaderID'], packet['prevLogIndex'],
+                response = self.append_entries(packet['term'], packet['id'], packet['prevLogIndex'],
                                                packet['prevLogTerm'], packet['entries'], packet['leaderCommit'])
                 msg = {'sender': 'server', 'type': 'ae response', 'id': self.id, 'term': self.currentTerm,
                        'response': response, 'nextIndex': len(self.log), 'commitIndex': self.commitIndex}
                 self.send(json.dumps(msg), False, self.leaderID)
             if type == 'request vote':
-                success = self.request_vote(packet['term'], packet['candidateID'], packet['lastLogIndex'],
+                success = self.request_vote(packet['term'], packet['id'], packet['lastLogIndex'],
                                             packet['lastLogTerm'])
                 if success:
+                    print(str(packet['id']) + 'wanted a vote I said YES')
                     msg = {'sender': 'server', 'type': 'vote response', 'id': self.id, 'term': self.currentTerm,
                            'success': success}
-                    self.send(json.dumps(msg), False, packet['candidateID'])
+                    self.send(json.dumps(msg), False, packet['id'])
+                else:
+                    print(str(packet['id']) + 'wanted a vote i said NO')
             if type == 'ae response' and self.leader:
                 if len(self.log) - 1 >= packet['nextIndex']:
                     if packet['response']:
@@ -202,8 +213,10 @@ class Server:
                     if not packet['response']:
                         self.nextIndex[packet['id']] -= 1
             if type == 'vote response':
+                print(packet['success'])
                 if packet['success']:
                     self.votes += 1
+                    print(self.votes)
 
     # --------------------------------------------------------------------------------------------
     # The Timer Methods
@@ -267,12 +280,15 @@ class Server:
             lastlogterm = self.log[self.commitIndex]
         else:
             lastlogterm = None
-        msg = {'sender': 'server', 'type': 'request vote', 'term': self.currentTerm, 'candidateID': self.id,
+        msg = {'sender': 'server', 'type': 'request vote', 'term': self.currentTerm, 'id': self.id,
                'lastLogIndex': self.commitIndex, 'lastLogTerm': lastlogterm}
         self.send(json.dumps(msg))
         while self.timeout != 0:
+            # print(self.votes)
+            # print(self.currentTerm)
             if self.votes >= 3:
                 self.leader = True
+                break
 
     def leader_commit_index(self):
         for n in range(self.commitIndex, self.commitIndex + 10):
