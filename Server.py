@@ -145,7 +145,6 @@ class Server:
                             file.write(str(lines))
                             file.write("\n")
                         file.close()
-                # TODO fix
                 if self.leader:  # leader only shit
                     if self.timeout is 0:  
                         msg = {'type': 'append entries', 'term': self.currentTerm, 'leaderID': self.id,
@@ -158,24 +157,6 @@ class Server:
                     self.leader_election()
             else:  # When 'crashed' (not self.alive) this keeps us quiet in the infinite loop
                 sleep(1)
-
-    def leader_commit_index(self):
-        for n in range(self.commitIndex, self.commitIndex+10):
-            a, b, c = False
-            counter = 0
-            if n > self.commitIndex:
-                a = True
-            for i in self.matchIndex:
-                if self.matchIndex[i] >= n:
-                    counter += 1
-            if counter >= 3:
-                b = True
-            if self.log[n].term == self.currentTerm: #TODO log needs terms
-                c = True
-            if a and b and c:
-                self.commitIndex = n
-                break
-
 
     # Loop Method to handle incoming messages
     def receive(self):
@@ -289,6 +270,23 @@ class Server:
         while self.timeout != 0:
             if self.votes >= 3:
                 self.leader = True
+
+    def leader_commit_index(self):
+        for n in range(self.commitIndex, self.commitIndex+10):
+            a, b, c = False
+            counter = 0
+            if n > self.commitIndex:
+                a = True
+            for i in self.matchIndex:
+                if self.matchIndex[i] >= n:
+                    counter += 1
+            if counter >= 3:
+                b = True
+            if self.log[n].term == self.currentTerm: #TODO log needs terms
+                c = True
+            if a and b and c:
+                self.commitIndex = n
+                break
 
     # --------------------------------------------------------------------------------------------
     # Methods to handle sending and receiving messages in support of Receiving Loop (above)
