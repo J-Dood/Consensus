@@ -21,6 +21,7 @@ import random
 def rand_offset():
     return random.randint(1, 10) / 10
 
+
 # The Class that acts as a server Node
 class Server:
     # --------------------------------------------------------------------------------------------
@@ -81,7 +82,7 @@ class Server:
 
         # Set up of the Treads
         # Start the listening Thread
-        self.listener = Thread(target=self.receive, args=())
+        self.listener = Thread(target=self.receive_loop, args=())
         self.listener.start()
         # Start the sending Thread
         self.server = Thread(target=self.server_loop(), args=())
@@ -148,7 +149,8 @@ class Server:
                     if self.timeout == 0:
                         msg = {'type': 'append entries', 'term': self.currentTerm, 'leaderID': self.id,
                                'prevLogIndex': min(self.nextIndex),
-                               'prevLogTerm': self.log[min(self.nextIndex)], 'entries': self.log[min(self.nextIndex): (len(self.log) - 1)],
+                               'prevLogTerm': self.log[min(self.nextIndex)],
+                               'entries': self.log[min(self.nextIndex): (len(self.log) - 1)],
                                'leaderCommit': self.commitIndex, 'sender': 'server'}
                         self.send(msg)
                     self.leader_commit_index()
@@ -181,16 +183,16 @@ class Server:
             type = packet['type']
             if type == 'append entries':
                 response = self.append_entries(packet['term'], packet['leaderID'], packet['prevLogIndex'],
-                                                packet['prevLogTerm'], packet['entries'], packet['leaderCommit'])
+                                               packet['prevLogTerm'], packet['entries'], packet['leaderCommit'])
                 msg = {'sender': 'server', 'type': 'ae response', 'id': self.id, 'term': self.currentTerm,
-                        'response': response, 'nextIndex': len(self.log), 'commitIndex': self.commitIndex}
+                       'response': response, 'nextIndex': len(self.log), 'commitIndex': self.commitIndex}
                 self.send(json.dumps(msg), False, self.leaderID)
             if type == 'request vote':
                 success = self.request_vote(packet['term'], packet['candidateID'], packet['lastLogIndex'],
                                             packet['lastLogTerm'])
                 if success:
                     msg = {'sender': 'server', 'type': 'vote response', 'id': self.id, 'term': self.currentTerm,
-                            'success': success}
+                           'success': success}
                     self.send(json.dumps(msg), False, packet['candidateID'])
             if type == 'ae response' and self.leader:
                 if len(self.log) - 1 >= packet['nextIndex']:
@@ -273,7 +275,7 @@ class Server:
                 self.leader = True
 
     def leader_commit_index(self):
-        for n in range(self.commitIndex, self.commitIndex+10):
+        for n in range(self.commitIndex, self.commitIndex + 10):
             a, b, c = False
             counter = 0
             if n > self.commitIndex:
@@ -283,7 +285,7 @@ class Server:
                     counter += 1
             if counter >= 3:
                 b = True
-            if self.log[n][0] == self.currentTerm: 
+            if self.log[n][0] == self.currentTerm:
                 c = True
             if a and b and c:
                 self.commitIndex = n
@@ -632,6 +634,6 @@ class Server:
         file.write(line)
         file.close()
 
-if __name__ == '__main__':
-     server = Server()
 
+if __name__ == '__main__':
+    server = Server()
