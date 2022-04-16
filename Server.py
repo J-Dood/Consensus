@@ -8,8 +8,7 @@
 #   4) Running a UI capable of causing 'crash', 'restore', and 'timeout' functions
 
 # Imports
-from importlib.abc import TraversableResources
-from os.path import existsgit
+from os.path import exists
 from threading import Thread
 from time import sleep
 import json
@@ -20,7 +19,7 @@ import random
 # Static Methods
 # Method to get a random offset between 1 - 1000 ms
 def rand_offset():
-    return random.randint(1, 1000) / 1000
+    return random.randint(1, 10) / 10
 
 
 # The Class that acts as a server Node
