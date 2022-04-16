@@ -423,55 +423,54 @@ class Server:
     # Methods to do the game logic
     # Method to handle the game logic on the server side
     def game_logic(self, player, action):
-        # TODO Log initial action and secondary actions as ONE, must succeed or fail together!!!
-        # TODO Need to know if actions are committed prior to changing game states.
+        self.log.append([self.currentTerm, player, action])
         if player == "red":  # Player "red" did.....
             # Block
             if action == "block_left":
-                self.red_left_blocking = True  # TODO Need confirmation of committed block prior to this
+                self.red_left_blocking = True
             elif action == "block_right":
-                self.red_right_blocking = True  # TODO Need confirmation of committed block prior to this
+                self.red_right_blocking = True
 
             # Strike
             elif action == "strike_left":
-                self.red_left_blocking = False  # TODO Need confirmation of committed block prior to this
+                self.red_left_blocking = False
                 result = self.strike("blue", self.blue_right_blocking, False)
                 if result == "stunned":
-                    pass  # TODO Log actions!
+                    self.log.append([self.currentTerm, 'red', 'stunned'])
                 else:
-                    pass  # TODO Log actions!
+                    self.log.append([self.currentTerm, 'blue', 'hit_right'])
             elif action == "strike_right":
                 self.red_right_blocking = False  # TODO Need confirmation of committed block prior to this
                 result = self.strike("blue", self.blue_left_blocking, True)
                 if result == "stunned":
-                    pass  # TODO Log actions!
+                    self.log.append([self.currentTerm, 'red', 'stunned'])
                 else:
-                    pass  # TODO Log actions!
+                    self.log.append([self.currentTerm, 'blue', 'hit_left'])
             else:  # Should never get here
                 print("Invalid Move!")
 
         elif player == "blue":  # Player "blue" did.....
             # Block
             if action == "block_left":
-                self.blue_left_blocking = True  # TODO Need confirmation of committed block prior to this
+                self.blue_left_blocking = True
             elif action == "block_right":
-                self.blue_right_blocking = True  # TODO Need confirmation of committed block prior to this
+                self.blue_right_blocking = True
 
             # Strike
             elif action == "strike_left":
-                self.blue_left_blocking = False  # TODO Need confirmation of committed block prior to this
+                self.blue_left_blocking = False
                 result = self.strike("red", self.red_right_blocking, False)
                 if result == "stunned":
-                    pass  # TODO Log actions!
+                    self.log.append([self.currentTerm, 'blue', 'stunned'])
                 else:
-                    pass  # TODO Log actions!
+                    self.log.append([self.currentTerm, 'red', 'hit_right'])
             elif action == "strike_right":
-                self.blue_right_blocking = False  # TODO Need confirmation of committed block prior to this
+                self.blue_right_blocking = False
                 result = self.strike("red", self.red_left_blocking, True)
                 if result == "stunned":
-                    pass  # TODO Log actions!
+                    self.log.append([self.currentTerm, 'blue', 'stunned'])
                 else:
-                    pass  # TODO Log actions!
+                    self.log.append([self.currentTerm, 'red', 'hit_left'])
             else:  # Should never get here
                 print("Invalid Move!")
 
