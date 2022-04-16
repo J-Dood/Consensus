@@ -142,14 +142,14 @@ class Server:
                         file.close()
                         self.to_json()
                 if self.leader:  # leader only shit
-                    if self.timeout is 0:  
+                    if self.timeout == 0:  
                         msg = {'type': 'append entries', 'term': self.currentTerm, 'leaderID': self.id,
                                'prevLogIndex': min(self.nextIndex),
                                'prevLogTerm': self.log[min(self.nextIndex)], 'entries': self.log[min(self.nextIndex): (len(self.log) - 1)],
                                'leaderCommit': self.commitIndex}
                         self.send(msg)
                     self.leader_commit_index()
-                if self.timeout is 0 and self.alive:  # candidate time
+                if self.timeout == 0 and self.alive:  # candidate time
                     self.leader_election()
             else:  # When 'crashed' (not self.alive) this keeps us quiet in the infinite loop
                 sleep(1)
@@ -168,35 +168,35 @@ class Server:
 
     def receive(self, packet):
         sender = packet['sender']
-        if sender is 'client':
+        if sender == 'client':
             self.handle_request(packet)
-        if sender is 'server':
+        if sender == 'server':
             if packet['term'] > self.currentTerm:
                 self.currentTerm = packet['term']
                 self.leader = False
                 self.leaderID = packet['id']
             type = packet['type']
-            if type is 'append entries':
+            if type == 'append entries':
                 response = self.append_entries(packet['term'], packet['leaderID'], packet['prevLogIndex'],
                                                 packet['prevLogTerm'], packet['entries'], packet['leaderCommit'])
                 msg = {'sender': 'server', 'type': 'ae response', 'id': self.id, 'term': self.currentTerm,
                         'response': response, 'nextIndex': len(self.log), 'commitIndex': self.commitIndex}
                 self.send(json.dumps(msg), False, self.leaderID)
-            if type is 'request vote':
+            if type == 'request vote':
                 success = self.request_vote(packet['term'], packet['candidateID'], packet['lastLogIndex'],
                                             packet['lastLogTerm'])
                 if success:
                     msg = {'sender': 'server', 'type': 'vote response', 'id': self.id, 'term': self.currentTerm,
                             'success': success}
                     self.send(json.dumps(msg), False, packet['candidateID'])
-            if type is 'ae response' and self.leader:
+            if type == 'ae response' and self.leader:
                 if len(self.log) - 1 >= packet['nextIndex']:
                     if packet['response']:
                         self.nextIndex[packet['id']] += 1
                         self.matchIndex[packet['id']] = packet['commitIndex']
                     if not packet['response']:
                         self.nextIndex[packet['id']] -= 1
-            if type is 'vote response':
+            if type == 'vote response':
                 if packet['success']:
                     self.votes += 1
 
