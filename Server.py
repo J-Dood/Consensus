@@ -516,6 +516,17 @@ class Server:
         self.address = None
         self.port = None
         self.timeout = 0
+        self.clients_clock_red = None
+        self.clients_clock_blue = None
+        self.client_alive_red = None
+        self.client_alive_blue = None
+        self.has_player = None
+        self.client_count_red = None
+        self.client_count_blue = None
+        self.red_left_blocking = None
+        self.red_right_blocking = None
+        self.blue_left_blocking = None
+        self.blue_right_blocking = None
 
     # Method to do the 'reviving' of the server
     def revive(self):
@@ -533,7 +544,7 @@ class Server:
     def to_json(self):
         dictionary = {
             'log': self.log,
-            'leaderID': self.leaderID,  # May not need
+            'leaderID': self.leaderID,
             'currentTerm': self.currentTerm,
             'voterFor': self.votedFor,
             'commitIndex': self.commitIndex,
@@ -541,7 +552,18 @@ class Server:
             'nextIndex': self.nextIndex,
             'addresses': self.addresses,
             'address': self.address,
-            'port': self.port
+            'port': self.port,
+            'clients_clock_red': self.clients_clock_red,
+            'clients_clock_blue': self.clients_clock_blue,
+            'client_alive_red': self.client_alive_red,
+            'client_alive_blue': self.client_alive_blue,
+            'has_player': self.has_player,
+            'client_count_red': self.client_count_red,
+            'client_count_blue': self.client_count_blue,
+            'red_left_blocking': self.red_left_blocking,
+            'red_right_blocking': self.red_right_blocking,
+            'blue_left_blocking': self.blue_left_blocking,
+            'blue_right_blocking': self.blue_right_blocking
         }
         json_object = json.dumps(dictionary)
         # Try Catch for opening the file, should never fail
@@ -567,6 +589,17 @@ class Server:
                 self.addresses = dictionary['addresses']
                 self.address = dictionary['address']
                 self.port = dictionary['port']
+                self.clients_clock_red = dictionary['clients_clock_red']
+                self.clients_clock_blue = dictionary['clients_clock_blue']
+                self.client_alive_red = dictionary['client_alive_red']
+                self.client_alive_blue = dictionary['client_alive_blue']
+                self.has_player = dictionary['has_player']
+                self.client_count_red = dictionary['client_count_red']
+                self.client_count_blue = dictionary['client_count_blue']
+                self.red_left_blocking = dictionary['red_left_blocking']
+                self.red_right_blocking = dictionary['red_right_blocking']
+                self.blue_left_blocking = dictionary['blue_left_blocking']
+                self.blue_right_blocking = dictionary['blue_right_blocking']
             json_file.close()
         else:
             print("Node Restoration Failed!")
