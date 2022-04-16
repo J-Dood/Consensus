@@ -200,12 +200,6 @@ class Server:
                 if packet['success']:
                     self.votes += 1
 
-            if type is 'client fwd' and self.leader:  # we are the leader and just got a client msg fwded to us from server
-                # TODO if msg receive from client append entry to local log, respond after entry applied to state machine
-                pass
-
-
-
     # --------------------------------------------------------------------------------------------
     # The Timer Methods
     # Method to leader heartbeat waiting timer
@@ -294,17 +288,18 @@ class Server:
     def send(self, message, toAllServers=True, destination=None):
         # self.log.append(((self.id, self.get_stamp()), "send", None))
         if toAllServers:
-            # send to everyone
-            pass
+            for server in self.addresses:
+                if server[0] == 'red' or server[0] == 'blue' or server[0] == self.id:
+                    continue
+                else:
+                    # tempSensorSocket.sendto(tempString.encode(), ("127.0.0.1",7070))
+                    self.s.sendto(message.encode('utf-8'), (server[1], server[2]))
         else:
-            # send only to leader, or candidate, use 'destination' to determine who
-            pass
-        for server in self.addresses:
-            if server[0] == 'red' or server[0] == 'blue' or server[0] == self.id:
-                continue
-            else:
-                self.s.sendto(message.encode('utf-8'), (self.nodes[server - 1][1], self.nodes[server - 1][2]))
-
+            for server in self.addresses:
+                if server[0] is destination:
+                    self.s.sendto(message.encode('utf-8'), (server[1], server[2]))
+                    break
+        
     # Method to handle the messaging to clients if we are leader
     def talk_to_client(self, name):
         clock = [0, self.commitIndex]
@@ -336,7 +331,7 @@ class Server:
     def fwd_to_leader(self, item):  # Send request to leader, we do need , fwd to leader
         message = json.dumps(item)
         identity = self.leaderID
-        self.send_to_client(identity, message)
+        self.send(message, False, identity)
 
     # Method to return all committed parts of a log back to some number
     def get_log(self, knows):
@@ -398,14 +393,7 @@ class Server:
                 'sender': "server"
                 }
         message = json.dumps(info)
-        self.send_to_client(name, message)
-
-    # Method to send messages to client
-    def send_to_client(self, name, message):
-        for address in self.addresses:
-            if address[0] == name:
-                self.s.sendto(message.encode('utf-8'), (address[1], address[2]))
-                break
+        self.send(message, False, name)
 
     # Method to decide if a message has been seen previously
     def seen(self, name, request):
