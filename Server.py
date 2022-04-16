@@ -21,7 +21,6 @@ import random
 def rand_offset():
     return random.randint(1, 10) / 10
 
-
 # The Class that acts as a server Node
 class Server:
     # --------------------------------------------------------------------------------------------
@@ -154,51 +153,56 @@ class Server:
                 sleep(1)
 
     # Loop Method to handle incoming messages
-    def receive(self):
+    def receive_loop(self):
         while True:
             if self.alive:
                 packet, address = self.s.recvfrom(1024)
                 packet = packet.decode('utf-8')
                 packet = json.loads(packet, address)
 
-                sender = packet['sender']
-                if sender is 'client':
-                    self.handle_request(packet)
-                if sender is 'server':
-                    if packet['term'] > self.currentTerm:
-                        self.currentTerm = packet['term']
-                        self.leader = False
-                        self.leaderID = packet['id']
-                    type = packet['type']
-                    if type is 'append entries':
-                        response = self.append_entries(packet['term'], packet['leaderID'], packet['prevLogIndex'],
-                                                       packet['prevLogTerm'], packet['entries'], packet['leaderCommit'])
-                        msg = {'sender': 'server', 'type': 'ae response', 'id': self.id, 'term': self.currentTerm,
-                               'response': response, 'nextIndex': len(self.log), 'commitIndex': self.commitIndex}
-                        self.send(json.dumps(msg), False, self.leaderID)
-                    if type is 'request vote':
-                        success = self.request_vote(packet['term'], packet['candidateID'], packet['lastLogIndex'],
-                                                    packet['lastLogTerm'])
-                        if success:
-                            msg = {'sender': 'server', 'type': 'vote response', 'id': self.id, 'term': self.currentTerm,
-                                   'success': success}
-                            self.send(json.dumps(msg), False, packet['candidateID'])
-                    if type is 'ae response' and self.leader:
-                        if len(self.log) - 1 >= packet['nextIndex']:
-                            if packet['response']:
-                                self.nextIndex[packet['id']] += 1
-                                self.matchIndex[packet['id']] = packet['commitIndex']
-                            if not packet['response']:
-                                self.nextIndex[packet['id']] -= 1
-                    if type is 'vote response':
-                        if packet['success']:
-                            self.votes += 1
-
-                    if type is 'client fwd' and self.leader:  # we are the leader and just got a client msg fwded to us from server
-                        # TODO if msg receive from client append entry to local log, respond after entry applied to state machine
-                        pass
+                self.receive(packet)
             else:  # When 'crashed' (not self.alive) this keeps us quiet in the infinite loop
                 sleep(1)
+
+    def receive(self, packet):
+        sender = packet['sender']
+        if sender is 'client':
+            self.handle_request(packet)
+        if sender is 'server':
+            if packet['term'] > self.currentTerm:
+                self.currentTerm = packet['term']
+                self.leader = False
+                self.leaderID = packet['id']
+            type = packet['type']
+            if type is 'append entries':
+                response = self.append_entries(packet['term'], packet['leaderID'], packet['prevLogIndex'],
+                                                packet['prevLogTerm'], packet['entries'], packet['leaderCommit'])
+                msg = {'sender': 'server', 'type': 'ae response', 'id': self.id, 'term': self.currentTerm,
+                        'response': response, 'nextIndex': len(self.log), 'commitIndex': self.commitIndex}
+                self.send(json.dumps(msg), False, self.leaderID)
+            if type is 'request vote':
+                success = self.request_vote(packet['term'], packet['candidateID'], packet['lastLogIndex'],
+                                            packet['lastLogTerm'])
+                if success:
+                    msg = {'sender': 'server', 'type': 'vote response', 'id': self.id, 'term': self.currentTerm,
+                            'success': success}
+                    self.send(json.dumps(msg), False, packet['candidateID'])
+            if type is 'ae response' and self.leader:
+                if len(self.log) - 1 >= packet['nextIndex']:
+                    if packet['response']:
+                        self.nextIndex[packet['id']] += 1
+                        self.matchIndex[packet['id']] = packet['commitIndex']
+                    if not packet['response']:
+                        self.nextIndex[packet['id']] -= 1
+            if type is 'vote response':
+                if packet['success']:
+                    self.votes += 1
+
+            if type is 'client fwd' and self.leader:  # we are the leader and just got a client msg fwded to us from server
+                # TODO if msg receive from client append entry to local log, respond after entry applied to state machine
+                pass
+
+
 
     # --------------------------------------------------------------------------------------------
     # The Timer Methods
@@ -277,7 +281,7 @@ class Server:
                     counter += 1
             if counter >= 3:
                 b = True
-            if self.log[n].term == self.currentTerm: #TODO log needs terms
+            if self.log[n][0] == self.currentTerm: 
                 c = True
             if a and b and c:
                 self.commitIndex = n
