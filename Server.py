@@ -66,8 +66,9 @@ class Server:
 
         # Code to try and read in network info from saved file
         # If file exists use information within
+        self.id = int(input("Enter the process ID: ").strip())
         try:
-            file_path = r"server_addresses.txt"
+            file_path = "server_addresses" + str(self.id) + ".txt"
             file = open(file_path, "r")
             self.from_file(file)
         # If no file found then collect network info
@@ -142,7 +143,7 @@ class Server:
                         file.close()
                         self.to_json()
                 if self.leader:  # leader only shit
-                    if self.timeout == 0:  
+                    if self.timeout == 0:
                         msg = {'type': 'append entries', 'term': self.currentTerm, 'leaderID': self.id,
                                'prevLogIndex': min(self.nextIndex),
                                'prevLogTerm': self.log[min(self.nextIndex)], 'entries': self.log[min(self.nextIndex): (len(self.log) - 1)],
@@ -299,7 +300,7 @@ class Server:
                 if server[0] is destination:
                     self.s.sendto(message.encode('utf-8'), (server[1], server[2]))
                     break
-        
+
     # Method to handle the messaging to clients if we are leader
     def talk_to_client(self, name):
         clock = [0, self.commitIndex]
@@ -393,7 +394,14 @@ class Server:
                 'sender': "server"
                 }
         message = json.dumps(info)
-        self.send(message, False, name)
+        self.send_to_client(name, message)
+
+    # Method to send messages to client
+    def send_to_client(self, name, message):
+        for address in self.addresses:
+            if address[0] == name:
+                self.s.sendto(message.encode('utf-8'), (address[1], address[2]))
+                break
 
     # Method to decide if a message has been seen previously
     def seen(self, name, request):
