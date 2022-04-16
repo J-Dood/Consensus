@@ -108,6 +108,7 @@ class Client:
     ready = False  # Does double duty tracking if other player is alive
     alive = True
     clock = [1, 0]  # (local count, server count)
+    known = 0
     s = None
 
     # Class functions
@@ -312,10 +313,14 @@ class Client:
     # TODO fix this so it only does NEW events, how to tell???
     def update_log(self, log):
         for item in log:
-            if item[1] == self.Id:
-                self.take_action(item[2])
+            if self.known >= item[3]:
+                pass
             else:
-                self.others_action(item[2])
+                if item[1] == self.Id:
+                    self.take_action(item[2])
+                else:
+                    self.others_action(item[2])
+                self.known = item[3]
 
 
 # The test driver

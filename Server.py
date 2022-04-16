@@ -158,7 +158,11 @@ class Server:
                                'prevLogIndex': min(self.nextIndex),
                                'prevLogTerm': self.log[min(self.nextIndex)],
                                'entries': self.log[min(self.nextIndex): (len(self.log) - 1)],
-                               'leaderCommit': self.commitIndex, 'sender': 'server'}
+                               'leaderCommit': self.commitIndex,
+                               'sender': 'server',
+                               'addresses': self.addresses,
+                               'state': self.get_game_state()
+                               }
                         self.send(msg)
                     self.leader_commit_index()
                 if self.timeout == 0 and self.alive:  # candidate time
@@ -175,6 +179,7 @@ class Server:
                 packet = packet.decode('utf-8')
                 packet = json.loads(packet)
 
+                packet = json.loads(packet, address)
                 self.receive(packet)
             else:  # When 'crashed' (not self.alive) this keeps us quiet in the infinite loop
                 sleep(1)
@@ -195,6 +200,9 @@ class Server:
                 msg = {'sender': 'server', 'type': 'ae response', 'id': self.id, 'term': self.currentTerm,
                        'response': response, 'nextIndex': len(self.log), 'commitIndex': self.commitIndex}
                 self.send(json.dumps(msg), False, self.leaderID)
+                if response:
+                    self.addresses = packet['addresses']
+                    self.update_game_state(packet['state'])
             if type == 'request vote':
                 success = self.request_vote(packet['term'], packet['id'], packet['lastLogIndex'],
                                             packet['lastLogTerm'])
@@ -441,55 +449,63 @@ class Server:
     # Methods to do the game logic
     # Method to handle the game logic on the server side
     def game_logic(self, player, action):
-        # TODO Log initial action and secondary actions as ONE, must succeed or fail together!!!
-        # TODO Need to know if actions are committed prior to changing game states.
+        self.log.append([self.currentTerm, player, action, self.lastApplied])
+        self.lastApplied += 1
         if player == "red":  # Player "red" did.....
             # Block
             if action == "block_left":
-                self.red_left_blocking = True  # TODO Need confirmation of committed block prior to this
+                self.red_left_blocking = True
             elif action == "block_right":
-                self.red_right_blocking = True  # TODO Need confirmation of committed block prior to this
+                self.red_right_blocking = True
 
             # Strike
             elif action == "strike_left":
-                self.red_left_blocking = False  # TODO Need confirmation of committed block prior to this
+                self.red_left_blocking = False
                 result = self.strike("blue", self.blue_right_blocking, False)
                 if result == "stunned":
-                    pass  # TODO Log actions!
+                    self.log.append([self.currentTerm, 'red', 'stunned', self.lastApplied])
+                    self.lastApplied += 1
                 else:
-                    pass  # TODO Log actions!
+                    self.log.append([self.currentTerm, 'blue', 'hit_right', self.lastApplied])
+                    self.lastApplied += 1
             elif action == "strike_right":
-                self.red_right_blocking = False  # TODO Need confirmation of committed block prior to this
+                self.red_right_blocking = False
                 result = self.strike("blue", self.blue_left_blocking, True)
                 if result == "stunned":
-                    pass  # TODO Log actions!
+                    self.log.append([self.currentTerm, 'red', 'stunned', self.lastApplied])
+                    self.lastApplied += 1
                 else:
-                    pass  # TODO Log actions!
+                    self.log.append([self.currentTerm, 'blue', 'hit_left', self.lastApplied])
+                    self.lastApplied += 1
             else:  # Should never get here
                 print("Invalid Move!")
 
         elif player == "blue":  # Player "blue" did.....
             # Block
             if action == "block_left":
-                self.blue_left_blocking = True  # TODO Need confirmation of committed block prior to this
+                self.blue_left_blocking = True
             elif action == "block_right":
-                self.blue_right_blocking = True  # TODO Need confirmation of committed block prior to this
+                self.blue_right_blocking = True
 
             # Strike
             elif action == "strike_left":
-                self.blue_left_blocking = False  # TODO Need confirmation of committed block prior to this
+                self.blue_left_blocking = False
                 result = self.strike("red", self.red_right_blocking, False)
                 if result == "stunned":
-                    pass  # TODO Log actions!
+                    self.log.append([self.currentTerm, 'blue', 'stunned', self.lastApplied])
+                    self.lastApplied += 1
                 else:
-                    pass  # TODO Log actions!
+                    self.log.append([self.currentTerm, 'red', 'hit_right', self.lastApplied])
+                    self.lastApplied += 1
             elif action == "strike_right":
-                self.blue_right_blocking = False  # TODO Need confirmation of committed block prior to this
+                self.blue_right_blocking = False
                 result = self.strike("red", self.red_left_blocking, True)
                 if result == "stunned":
-                    pass  # TODO Log actions!
+                    self.log.append([self.currentTerm, 'blue', 'stunned', self.lastApplied])
+                    self.lastApplied += 1
                 else:
-                    pass  # TODO Log actions!
+                    self.log.append([self.currentTerm, 'red', 'hit_left', self.lastApplied])
+                    self.lastApplied += 1
             else:  # Should never get here
                 print("Invalid Move!")
 
@@ -511,6 +527,39 @@ class Server:
                 return "hit_left"
             else:
                 return "hit_right"
+
+    # Method to compile the game state in a dictionary
+    def get_game_state(self):
+        dictionary = {
+            'last': self.lastApplied,
+            'clients_clock_red': self.clients_clock_red,
+            'clients_clock_blue': self.clients_clock_blue,
+            'client_alive_red': self.client_alive_red,
+            'client_alive_blue': self.client_alive_blue,
+            'has_player': self.has_player,
+            'client_count_red': self.client_count_red,
+            'client_count_blue': self.client_count_blue,
+            'red_left_blocking': self.red_left_blocking,
+            'red_right_blocking': self.red_right_blocking,
+            'blue_left_blocking': self.blue_left_blocking,
+            'blue_right_blocking': self.blue_right_blocking
+        }
+        return dictionary
+
+    # Method to update the game state from a dictionary
+    def update_game_state(self, dictionary):
+        self.lastApplied = dictionary['last']
+        self.clients_clock_red = dictionary['clients_clock_red']
+        self.clients_clock_blue = dictionary['clients_clock_blue']
+        self.client_alive_red = dictionary['client_alive_red']
+        self.client_alive_blue = dictionary['client_alive_blue']
+        self.has_player = dictionary['has_player']
+        self.client_count_red = dictionary['client_count_red']
+        self.client_count_blue = dictionary['client_count_blue']
+        self.red_left_blocking = dictionary['red_left_blocking']
+        self.red_right_blocking = dictionary['red_right_blocking']
+        self.blue_left_blocking = dictionary['blue_left_blocking']
+        self.blue_right_blocking = dictionary['blue_right_blocking']
 
     # --------------------------------------------------------------------------------------------
     # Methods to do the fake crash and revive options
