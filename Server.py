@@ -40,7 +40,7 @@ class Server:
         self.lastApplied = 0  # index of highest log entry applied to state machine
         self.timeout = 0
         self.electionTime = 6
-        self.timeoutTime = 3 + random.random()
+        self.timeoutTime = 3 + rand_offset()
         self.heartbeatTime = 1
         # Leader Only Fields
         self.leader = False  # set to true if node is leader
@@ -156,9 +156,6 @@ class Server:
                     self.leader_commit_index()
                 if self.timeout is 0 and self.alive:  # candidate time
                     self.leader_election()
-                    if self.timeout is 0: #TODO might actually need eleciton timer separate from timeout
-                        self.leader_election()
-                        self.timeout = self.electionTime 
             else:  # When 'crashed' (not self.alive) this keeps us quiet in the infinite loop
                 sleep(1)
 
@@ -236,7 +233,7 @@ class Server:
         while True:
             if self.alive:
                 if self.timeout != 0:
-                    sleep(1)
+                    sleep(.1)
                     self.timeout -= 1
             else:  # When 'crashed' (not self.alive) this keeps us quiet in the infinite loop
                 sleep(1)
