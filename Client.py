@@ -257,13 +257,17 @@ class Client:
             packet, address = self.s.recvfrom(1024)
             packet = packet.decode('utf-8')
             packet = json.loads(packet)
-            if not packet['alive']:
-                self.alive = False
-            if self.Id is None:
-                self.Id = packet['name']
-            self.ready = packet['game']
-            self.clock[1] = packet['time'][1]
-            self.update_log(packet['log'])
+            self.receive_inner(packet)  # Can insert any 'message' (dictionary) here for testing
+
+    # Method to take a message and process it, once received
+    def receive_inner(self, packet):
+        if not packet['alive']:
+            self.alive = False
+        if self.Id is None:
+            self.Id = packet['name']
+        self.ready = packet['game']
+        self.clock[1] = packet['time'][1]
+        self.update_log(packet['log'])
 
     # A method to update the game for this players moves
     def take_action(self, action):
@@ -316,7 +320,6 @@ class Client:
 
 # The test driver
 if __name__ == '__main__':
-    client = Client()
-    client.block_left
+    pass
 
 
