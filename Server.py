@@ -148,6 +148,7 @@ class Server:
                     file.close()
                     self.to_json()
                 if self.leader:  # leader only shit
+                    # CONNIE HERE - check are we sending heartbeats, do we need to modify timeouts so leader can do shit for a bit
                     if self.timeout <= 0:
                         msg = {'type': 'append entries', 'term': self.currentTerm, 'id': self.id,
                                'prevLogIndex': min(self.nextIndex),
@@ -324,9 +325,14 @@ class Server:
                     counter += 1
             if counter >= 3:
                 b = True
-            if self.log[n][0] == self.currentTerm:
-                c = True
+            try:
+                if self.log[n][0] == self.currentTerm:
+                    c = True
+            except IndexError:
+                if len(self.log) == 0:
+                    c = True
             if a and b and c:
+                print(n)
                 self.commitIndex = n
                 break
 
