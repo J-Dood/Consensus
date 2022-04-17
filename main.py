@@ -6,14 +6,41 @@ import winsound
 
 def print_hi(name):
     # Use a breakpoint in the code line below to debug your script.
-    print("\U0001f602")
-    print("\U0001f3bd")
-    print("\U0001f456")# Press Ctrl+F8 to toggle the breakpoint.
-    winsound.Beep(150, 100)
+    print("             _\n  _____   o |_|\n |LEFT |o__\/|\n | HIT!|     |\n |_____|    / \\\n          _/  _\\\n")
 
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    print_hi('PyCharm')
+        print("  _        _\n |_|o  o  |_|\n  |\|o  \o/|\n  |\/  "
+              + "  |/|\n / \      / \\\n/_  \_  _/  _\\\n")
+        print("  _        _\n |_|o    o|_|\n  |\|o  o|/|\n  |\/  "
+              + "  \/|\n / \      / \\\n/_  \_  _/  _\\\n")
+        print("  _        _\n |_|o   o |_|\n  |\|o  |o/|\n  |\/ "
+              + "   |/|\n / \      / \\\n/_  \_  _/  _\\\n")
+        print("  _        _\n |_|o   o |_|\n  |\|o  o\/|\n  |\/    \/|\n"
+              + " / \      / \\\n/_  \_  _/  _\\\n")
+        print("  _        _\n |_|  o o |_|\n  |\o/  \o/|\n  |\|  "
+              + "  |/|\n / \      / \\\n/_  \_  _/  _\\\n")
+        print("  _        _\n |_|  o  o|_|\n  |\o/  o|/|\n "
+              + " |\|    \/|\n / \      / \\\n/_  \_  _/  _\\\n")
+        print("  _        _\n |_|  o  o|_|\n  |\o/  |o/|\n  |\|  "
+              + "  |/|\n / \      / \\\n/_  \_  _/  _\\\n")
+        print("  _        _\n |_|  o o |_|\n  |\o/  o\/|\n  |\|  "
+              + "  \/|\n / \      / \\\n/_  \_  _/  _\\\n")
+        print("  _        _\n |_| o  o |_|\n  |\o|  \o/|\n  |\|  "
+              + "  |/|\n / \      / \\\n/_  \_  _/  _\\\n")
+        print("  _        _\n |_| o   o|_|\n  |\o|  o|/|\n  |\| "
+              + "   \/|\n / \      / \\\n/_  \_  _/  _\\\n")
+        print("  _        _\n |_| o  o |_|\n  |\o|  |o/|\n  |\| "
+              + "   |/|\n / \      / \\\n/_  \_  _/  _\\\n")
+        print("  _        _\n |_| o  o |_|\n  |\o|  o\/|\n"
+              + "  |\|    \/|\n / \      / \\\n/_  \_  _/  _\\\n")
+        print("  _        _\n |_| o  o |_|\n  |\o|  \o/|\n  |\|  "
+              + "  |/|\n / \      / \\\n/_  \_  _/  _\\\n")
+        print("  _        _\n |_| o   o|_|\n  |\/o  o|/|\n"
+              + "  |\/    \/|\n / \      / \\\n/_  \_  _/  _\\\n")
+        print("  _        _\n |_| o  o |_|\n  |\/o  |o/|\n  |\/  "
+              + "  |/|\n / \      / \\\n/_  \_  _/  _\\\n")
+        print("  _        _\n |_| o  o |_|\n  |\/o  o\/|\n"
+              + "  |\/    \/|\n / \      / \\\n/_  \_  _/  _\\\n")
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/

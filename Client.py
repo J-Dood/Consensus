@@ -9,12 +9,35 @@
 # Imports
 from threading import Thread
 from time import sleep
-import winsound
 import json
 import socket
 
 
 # Static Functions
+# Function to print strike image
+def strike(person, side):
+    if person == "other":
+        if side == "left":
+            print("  _        _\n |_| o  o |_|\n  |\/oo__\/|\n"
+                  + "  |\/      |\n / \      / \\\n/_  \_  _/  _\\\n")
+        elif side == "right":
+            print("  _        _\n |_| oo___|_|\n  |\/o  o  |\n"
+                  + "  |\/    \/|\n / \      / \\\n/_  \_  _/  _\\\n")
+        else:  # Error condition, should never reach
+            print("Error, invalid side passed to strike")
+    elif person == "me":
+        if side == "left":
+            print("  _        _\n |_|___oo |_|\n  |  o  o\/|\n"
+                  + "  |\/    \/|\n / \      / \\\n/_  \_  _/  _\\\n")
+        elif side == "right":
+            print("  _        _\n |_| o  o |_|\n  |\/__oo\/|\n  |      \/|\n"
+                  + " / \      / \\\n/_  \_  _/  _\\\n")
+        else:  # Error condition, should never reach
+            print("Error, invalid side passed to strike")
+    else:  # Error condition, should never reach
+        print("Error, invalid person passed to strike")
+
+
 # Function to print instructions
 def instructions():
     print("When the game starts you can use these keys: ")
@@ -28,18 +51,14 @@ def instructions():
 
 
 # Function to count down to the fight
-def count_down():
-    print("Fight in 3...")
-    winsound.Beep(440, 500)
+def count_down(player):
+    print("Fight in 3...\a")
     sleep(1)
-    print("Fight in 2...")
-    winsound.Beep(440, 500)
+    print("Fight in 2...\a")
     sleep(1)
-    print("Fight in 1...")
-    winsound.Beep(440, 500)
+    print("Fight in 1...\a")
     sleep(1)
-    print("Fight!!!\n")
-    winsound.Beep(150, 100)
+    print(str(player) + " Player, Fight!!!\n\a")
 
 
 # Function to print the game result
@@ -53,26 +72,30 @@ def game_result(alive):
               + "  \_/ |_|\___|\__\___/|_|   \__, |\n"
               + "                             __/ |\n"
               + "                            |___/ "
-              + "\n          YOU WIN!\n")
+              + "\n          YOU WIN!\n\a")
     else:
         # Loss End Game
-        print("\n    ___\n   |RIP|\n   |   |\n ##|___|##\n YOU DIED!\n")
+        print("\n    ___\n   |RIP|\n   |   |\n ##|___|##\n YOU DIED!\n\a")
 
 
 # A function to draw action frames for hits
 def kapow(who, side):
     if who == "me":
         if side == "left":
-            pass
+            print("             _\n  _____   o |_|\n |LEFT |o__\/|"
+                  + "\n | HIT!|     |\n |_____|    / \\\n          _/  _\\\n")
         elif side == "right":
-            pass
+            print(" _____      _\n|RIGHT|o___|_|\n| HIT!|  o  |"
+                  + "\n|_____|   \/|\n           / \\\n         _/  _\\\n")
         else:
             print("I don’t know if we’ll ever get back home.")  # Error Message
     elif who == "other":
         if side == "left":
-            pass
+            print("   _      _____\n  |_| o  |LEFT |\n   |\/__o| HIT!|\n"
+                  + "   |     |_____|\n  / \\\n /_  \_\n")
         elif side == "right":
-            pass
+            print("   _      _____\n  |_|___o|RIGHT|\n   |  o  | HIT!|\n"
+                  + "   |\/   |_____|\n  / \\\n /_  \_\n")
         else:
             print("I don’t know if we’ll ever get back home.")  # Error Message
     else:
@@ -84,12 +107,70 @@ def kapow(who, side):
 # A function to draw stunned action
 def stunned(who):
     if who == "me":
-        pass
+        print(" _            _\n|_| o o    o |_|\n  \\_|/     o\/|\n   \        \/|\n"
+              + "   / \       / \\\n  /_  \_   _/  _\\\n")
     elif who == "other":
-        pass
+        print("   _           _\n  |_| o   o o |_|\n   |\/o    \|_/\n"
+              + "   |\/       /\n  / \      / \\\n /_  \_  _/  _\\\n")
     else:
         print("You shouldn't be here.")  # Error Message
     sleep(3)
+
+
+# A function to draw the player stances
+def stance(red_left, red_right, blue_left, blue_right):
+    if red_left:
+        if blue_left:  # red blocking left and blue blocking left
+            print("  _        _\n |_|o  o  |_|\n  |\|o  \o/|\n  |\/  "
+                  + "  |/|\n / \      / \\\n/_  \_  _/  _\\\n")
+        elif blue_right:  # red blocking left and blue blocking right
+            print("  _        _\n |_|o    o|_|\n  |\|o  o|/|\n  |\/  "
+                  + "  \/|\n / \      / \\\n/_  \_  _/  _\\\n")
+        elif blue_left and blue_right:  # red blocking left and blue blocking both
+            print("  _        _\n |_|o   o |_|\n  |\|o  |o/|\n  |\/ "
+                  + "   |/|\n / \      / \\\n/_  \_  _/  _\\\n")
+        else:  # red blocking left, only block
+            print("  _        _\n |_|o   o |_|\n  |\|o  o\/|\n  |\/    \/|\n"
+                  + " / \      / \\\n/_  \_  _/  _\\\n")
+    elif red_right:
+        if blue_left:  # red blocking right and blue blocking left
+            print("  _        _\n |_|  o o |_|\n  |\o/  \o/|\n  |\|  "
+                  + "  |/|\n / \      / \\\n/_  \_  _/  _\\\n")
+        elif blue_right:  # red blocking right and blue blocking right
+            print("  _        _\n |_|  o  o|_|\n  |\o/  o|/|\n "
+                  + " |\|    \/|\n / \      / \\\n/_  \_  _/  _\\\n")
+        elif blue_left and blue_right:  # red blocking right and blue blocking both
+            print("  _        _\n |_|  o  o|_|\n  |\o/  |o/|\n  |\|  "
+                  + "  |/|\n / \      / \\\n/_  \_  _/  _\\\n")
+        else:  # red blocking right, only block
+            print("  _        _\n |_|  o o |_|\n  |\o/  o\/|\n  |\|  "
+                  + "  \/|\n / \      / \\\n/_  \_  _/  _\\\n")
+    elif red_left and red_right:
+        if blue_left:  # red blocking both and blue blocking left
+            print("  _        _\n |_| o  o |_|\n  |\o|  \o/|\n  |\|  "
+                  + "  |/|\n / \      / \\\n/_  \_  _/  _\\\n")
+        elif blue_right:  # red blocking both and blue blocking right
+            print("  _        _\n |_| o   o|_|\n  |\o|  o|/|\n  |\| "
+                  + "   \/|\n / \      / \\\n/_  \_  _/  _\\\n")
+        elif blue_left and blue_right:  # red blocking both and blue blocking both
+            print("  _        _\n |_| o  o |_|\n  |\o|  |o/|\n  |\| "
+                  + "   |/|\n / \      / \\\n/_  \_  _/  _\\\n")
+        else:  # red blocking both, only blocks
+            print("  _        _\n |_| o  o |_|\n  |\o|  o\/|\n"
+                  + "  |\|    \/|\n / \      / \\\n/_  \_  _/  _\\\n")
+    else:
+        if blue_left:  # blue blocking left, only block
+            print("  _        _\n |_| o  o |_|\n  |\o|  \o/|\n  |\|  "
+                  + "  |/|\n / \      / \\\n/_  \_  _/  _\\\n")
+        elif blue_right:  # blue blocking right, only block
+            print("  _        _\n |_| o   o|_|\n  |\/o  o|/|\n"
+                  + "  |\/    \/|\n / \      / \\\n/_  \_  _/  _\\\n")
+        elif blue_left and blue_right:  # blue blocking both
+            print("  _        _\n |_| o  o |_|\n  |\/o  |o/|\n  |\/  "
+                  + "  |/|\n / \      / \\\n/_  \_  _/  _\\\n")
+        else:  # no blocks
+            print("  _        _\n |_| o  o |_|\n  |\/o  o\/|\n"
+                  + "  |\/    \/|\n / \      / \\\n/_  \_  _/  _\\\n")
 
 
 # The class for running the UI and handling the game state and messaging the server
@@ -130,8 +211,8 @@ class Client:
         self.sender = Thread(target=self.run, args=())
         self.sender.start()
         # Start the sending Thread
-        self.timer = Thread(target=self.timer, args=())
-        self.timer.start()
+        self.time_keeper = Thread(target=self.timer, args=())
+        self.time_keeper.start()
 
     # This method gathers needed network info from the user if file not found.
     def build_self(self):
@@ -183,7 +264,7 @@ class Client:
         while not self.ready:
             sleep(5)
             self.send_move()
-        count_down()
+        count_down(self.Id)
         self.game_loop()
         game_result(self.alive)
 
@@ -200,7 +281,7 @@ class Client:
             elif choice == 's':
                 self.block_right()
             else:
-                winsound.Beep(600, 250)
+                print("\a")
 
     # A method to decide if a player can strike based on a passed penalty (wait) time
     def timer(self):
@@ -278,8 +359,10 @@ class Client:
             self.blocking_right = True
         elif action == "strike_left":
             self.blocking_left = False
+            strike("me", "left")
         elif action == "strike_right":
             self.blocking_right = False
+            strike("me", "right")
         elif action == "hit_left":
             kapow("me", "left")
         elif action == "hit_right":
@@ -287,27 +370,33 @@ class Client:
         elif action == "stunned":
             self.penalties = 3
             stunned("me")
-        else:
+        else:  # Error Condition
             print("Something is very wrong, you shouldn't be here!")
+        # Prints the image of the stance
+        stance(self.blocking_left, self.blocking_right, self.other_blocking_left, self.other_blocking_right)
 
-        # A method to update the game for this players moves
+    # A method to update the game for this players moves
     def others_action(self, action):
         if action == "block_left":
             self.other_blocking_left = True
         elif action == "block_right":
             self.other_blocking_right = True
-        elif action == "strike_left":
-            self.other_blocking_left = False
-        elif action == "strike_right":
-            self.other_blocking_right = False
         elif action == "hit_left":
             kapow("other", "left")
         elif action == "hit_right":
             kapow("other", "right")
         elif action == "stunned":
             stunned("other")
-        else:
+        elif action == "strike_left":
+            self.other_blocking_left = False
+            strike("other", "left")
+        elif action == "strike_right":
+            self.other_blocking_right = False
+            strike("other", "right")
+        else:  # Error Condition
             print("Something is very wrong, you shouldn't be here!")
+        # Prints the image of the stance
+        stance(self.blocking_left, self.blocking_right, self.other_blocking_left, self.other_blocking_right)
 
     # A method to update the local game from a received log
     def update_log(self, log):
@@ -324,6 +413,32 @@ class Client:
 
 # The test driver
 if __name__ == '__main__':
-    pass
+    act = "strike_right"
+    log = [[3, 'red', 'hit_left', 4],
+        [3, 'blue', 'stunned', 5],
+        [3, 'blue', 'block_left', 6]]
+    pack1 = {
+        'time': [0, 100],
+        'action': None,
+        'name': 'red',
+        'alive': True,
+        'game': True,
+        'log': log,
+        'sender': 'server'
+    }
+    pack2 = {
+        'time': [0, 100],
+        'action': None,
+        'name': 'red',
+        'alive': True,
+        'game': False,
+        'log': log,
+        'sender': 'server'
+    }
+    client = Client()
+    client.receive_inner(pack1)
+    #sleep(20)
+    #client.receive_inner(pack2)
+    #client.send_move(act)
 
 

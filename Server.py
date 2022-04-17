@@ -53,7 +53,7 @@ class Server:
         self.addresses = None
         self.address = None
         self.port = 4000
-        # NEWLY ADDED
+        # Game State Fields
         self.clients_clock_red = 0  # Start as None until client contact made
         self.clients_clock_blue = 0
         self.client_alive_red = True
@@ -73,6 +73,7 @@ class Server:
             file_path = "server_addresses" + str(self.id) + ".txt"
             file = open(file_path, "r")
             self.from_file(file)
+            file.close()
         # If no file found then collect network info
         except IOError:
             self.build_self()
@@ -528,9 +529,9 @@ class Server:
                     self.lastApplied += 1
             else:  # Should never get here
                 print("Invalid Move!")
-
         else:  # Should never get here
             print("Invalid Username!")
+        self.to_log()  # Where log gets saved to file once updated
 
     # Method to decide outcome of a strike
     def strike(self, name, blocking, left):
@@ -705,7 +706,6 @@ class Server:
                 self.port = int(address[2])
             address_book.append([address[0], address[1], address[2]])
         self.addresses = address_book
-        file.close()
 
     # Method to create start up file for next run
     def to_file(self):
