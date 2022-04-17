@@ -4,43 +4,34 @@
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 import winsound
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print("             _\n  _____   o |_|\n |LEFT |o__\/|\n | HIT!|     |\n |_____|    / \\\n          _/  _\\\n")
+# This Method appends the received entries
+    def append_entries(self, term, leaderID, prevLogIndex, prevLogTerm, entries,
+                       leaderCommit):  # For leader, appends entries, heartbeat
+        self.timeout = self.timeoutTime
+        success = True
+        indexOfLastNewEntry = len(self.log) - 1
+        if term < self.currentTerm:  # What is this doing? -JORDAN
+            success = False
+        if indexOfLastNewEntry >= prevLogIndex:
+            if self.log[prevLogIndex] != prevLogTerm:  # Probably need to index in further? -JORDAN
+                success = False
+                for i in range(prevLogIndex, indexOfLastNewEntry):  # Probably need to index +1 to get last -JORDAN
+                    self.log.remove(i)  # Probably should slice, otherwise indexing may not work -JORDAN
+        for x in entries:
+            if x not in self.log:
+                self.log.append(x)
+        if leaderCommit > self.commitIndex:
+            self.commitIndex = min(leaderCommit, indexOfLastNewEntry)
+        if success:
+            self.currentTerm = term
+        if not self.leader:
+            self.leaderID = leaderID
+            self.candidate = False  # CONNIE maybe remove
+        return success
 
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-        print("  _        _\n |_|o  o  |_|\n  |\|o  \o/|\n  |\/  "
-              + "  |/|\n / \      / \\\n/_  \_  _/  _\\\n")
-        print("  _        _\n |_|o    o|_|\n  |\|o  o|/|\n  |\/  "
-              + "  \/|\n / \      / \\\n/_  \_  _/  _\\\n")
-        print("  _        _\n |_|o   o |_|\n  |\|o  |o/|\n  |\/ "
-              + "   |/|\n / \      / \\\n/_  \_  _/  _\\\n")
-        print("  _        _\n |_|o   o |_|\n  |\|o  o\/|\n  |\/    \/|\n"
-              + " / \      / \\\n/_  \_  _/  _\\\n")
-        print("  _        _\n |_|  o o |_|\n  |\o/  \o/|\n  |\|  "
-              + "  |/|\n / \      / \\\n/_  \_  _/  _\\\n")
-        print("  _        _\n |_|  o  o|_|\n  |\o/  o|/|\n "
-              + " |\|    \/|\n / \      / \\\n/_  \_  _/  _\\\n")
-        print("  _        _\n |_|  o  o|_|\n  |\o/  |o/|\n  |\|  "
-              + "  |/|\n / \      / \\\n/_  \_  _/  _\\\n")
-        print("  _        _\n |_|  o o |_|\n  |\o/  o\/|\n  |\|  "
-              + "  \/|\n / \      / \\\n/_  \_  _/  _\\\n")
-        print("  _        _\n |_| o  o |_|\n  |\o|  \o/|\n  |\|  "
-              + "  |/|\n / \      / \\\n/_  \_  _/  _\\\n")
-        print("  _        _\n |_| o   o|_|\n  |\o|  o|/|\n  |\| "
-              + "   \/|\n / \      / \\\n/_  \_  _/  _\\\n")
-        print("  _        _\n |_| o  o |_|\n  |\o|  |o/|\n  |\| "
-              + "   |/|\n / \      / \\\n/_  \_  _/  _\\\n")
-        print("  _        _\n |_| o  o |_|\n  |\o|  o\/|\n"
-              + "  |\|    \/|\n / \      / \\\n/_  \_  _/  _\\\n")
-        print("  _        _\n |_| o  o |_|\n  |\o|  \o/|\n  |\|  "
-              + "  |/|\n / \      / \\\n/_  \_  _/  _\\\n")
-        print("  _        _\n |_| o   o|_|\n  |\/o  o|/|\n"
-              + "  |\/    \/|\n / \      / \\\n/_  \_  _/  _\\\n")
-        print("  _        _\n |_| o  o |_|\n  |\/o  |o/|\n  |\/  "
-              + "  |/|\n / \      / \\\n/_  \_  _/  _\\\n")
-        print("  _        _\n |_| o  o |_|\n  |\/o  o\/|\n"
-              + "  |\/    \/|\n / \      / \\\n/_  \_  _/  _\\\n")
+
+
 
