@@ -155,12 +155,14 @@ class Server:
                     if self.timeout <= 0:
                         try:
                             prevlogterm = self.log[min(self.nextIndex)]
+                            entries = self.log[min(self.nextIndex): (len(self.log) - 1)]
                         except IndexError:
                             prevlogterm = None
+                            entries = None
                         msg = {'type': 'append entries', 'term': self.currentTerm, 'id': self.id,
                                'prevLogIndex': min(self.nextIndex),
                                'prevLogTerm': prevlogterm,
-                               'entries': self.log[min(self.nextIndex): (len(self.log) - 1)],
+                               'entries': entries,
                                'leaderCommit': self.commitIndex,
                                'sender': 'server',
                                'addresses': self.addresses,
@@ -289,9 +291,9 @@ class Server:
         if term < self.currentTerm:
             print(str(candidate_ID) + "wanted vote, I said no bc their term is not upto date")
             return False
-        if self.votedFor is None or self.votedFor is candidate_ID:
+        if self.votedFor is None or self.votedFor == candidate_ID:
             try:
-                if self.log[lastLogIndex] == lastLogTerm:
+                if self.log[lastLogIndex][0] == lastLogTerm:
                     self.timeout = self.timeoutTime
                     print('I INCREMENTED TERM 2')
                     self.currentTerm = term
