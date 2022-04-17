@@ -7,6 +7,8 @@
 #   3) Saving the Server Node data and Log to disc
 #   4) Running a UI capable of causing 'crash', 'restore', and 'timeout' functions
 
+# we are getting msg from followers but still running elections, do something about that
+
 # Imports
 from os.path import exists
 from threading import Thread
@@ -150,16 +152,22 @@ class Server:
                 if self.leader:  # leader only shit
                     # CONNIE HERE - check are we sending heartbeats, do we need to modify timeouts so leader can do shit for a bit
                     if self.timeout <= 0:
+                        try:
+                            prevlogterm = self.log[min(self.nextIndex)]
+                        except IndexError:
+                            prevlogterm = None
                         msg = {'type': 'append entries', 'term': self.currentTerm, 'id': self.id,
                                'prevLogIndex': min(self.nextIndex),
-                               'prevLogTerm': self.log[min(self.nextIndex)],
+                               'prevLogTerm': prevlogterm,
                                'entries': self.log[min(self.nextIndex): (len(self.log) - 1)],
                                'leaderCommit': self.commitIndex,
                                'sender': 'server',
                                'addresses': self.addresses,
                                'state': self.get_game_state()
                                }
-                        self.send(msg)
+                        print('trying to send')
+                        self.send(json.dumps(msg))
+                        print('tried to send')
                     self.leader_commit_index()
                 if self.timeout <= 0 and self.alive:  # candidate time
                     print('i am running for election')
@@ -185,12 +193,14 @@ class Server:
         if sender == 'client':
             self.handle_request(packet, address)
         if sender == 'server':
-            if packet['term'] > self.currentTerm:
-                self.currentTerm = packet['term']
-                self.leader = False
-                self.leaderID = packet['id']
+            #  TODO this was breaking shit so i took it away, but we will need it unfortunatly....
+            # if packet['term'] > self.currentTerm:
+            #     self.currentTerm = packet['term']
+            #     self.leader = False
+            #     self.leaderID = packet['id']
             type = packet['type']
             if type == 'append entries':
+                print('hey i got an append entries!')
                 response = self.append_entries(packet['term'], packet['id'], packet['prevLogIndex'],
                                                packet['prevLogTerm'], packet['entries'], packet['leaderCommit'])
                 msg = {'sender': 'server', 'type': 'ae response', 'id': self.id, 'term': self.currentTerm,
@@ -208,6 +218,7 @@ class Server:
                            'success': success}
                     self.send(json.dumps(msg), False, packet['id'])
             if type == 'ae response' and self.leader:
+                print('i go t ae response')
                 if len(self.log) - 1 >= packet['nextIndex']:
                     if packet['response']:
                         self.nextIndex[packet['id']] += 1
@@ -217,6 +228,7 @@ class Server:
             if type == 'vote response':
                 print(packet['success'])
                 if packet['success']:
+                    print('i got voted for!!')
                     self.votes += 1
                     print(self.votes)
 
@@ -239,6 +251,8 @@ class Server:
     def append_entries(self, term, leaderID, prevLogIndex, prevLogTerm, entries,
                        leaderCommit):  # For leader, appends entries, heartbeat $$$$$$$$$$$$$$
         self.timeout = self.timeoutTime
+        print('im in append entreis')
+        print(self.timeout)
         success = True
         indexOfLastNewEntry = len(self.log) - 1
         if term < self.currentTerm:
@@ -260,6 +274,7 @@ class Server:
         return success
 
     def request_vote(self, term, candidate_ID, lastLogIndex, lastLogTerm):
+        print('am I a leader?' + str(self.leader))
         if self.leader:
             print(str(candidate_ID) + "wanted vote, I said no bc I am LEADER")
             return False
@@ -346,6 +361,7 @@ class Server:
                 else:
                     # tempSensorSocket.sendto(tempString.encode(), ("127.0.0.1",7070))
                     self.s.sendto(message.encode('utf-8'), (node[1], int(node[2])))
+                    print('sent to everyone!')
         else:
             for node in self.addresses:
                 if int(node[0]) == int(destination):
@@ -384,7 +400,7 @@ class Server:
     def fwd_to_leader(self, item):  # Send request to leader, we do need , fwd to leader
         message = json.dumps(item)
         identity = self.leaderID
-        self.send(message, False, identity)
+        self.send(json.dumps(message), False, identity)
 
     # Method to return all committed parts of a log back to some number
     def get_log(self, knows):
