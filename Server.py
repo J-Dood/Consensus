@@ -194,11 +194,11 @@ class Server:
         if sender == 'client':
             self.handle_request(packet, address)
         if sender == 'server':
-            #  TODO this was breaking shit so i took it away, but we will need it unfortunatly....
-            # if packet['term'] > self.currentTerm:
-            #     self.currentTerm = packet['term']
-            #     self.leader = False
-            #     self.leaderID = packet['id']
+            #  TODO this if statement might break everything.. not sure
+            if (packet['term'] > self.currentTerm) and packet['type'] == 'append entries':
+                self.currentTerm = packet['term']
+                self.leader = False
+                self.leaderID = packet['id']
             type = packet['type']
             if type == 'append entries':
                 print('hey i got an append entries!')
