@@ -37,10 +37,11 @@ class Server:
         self.log = []
         self.commitIndex = 0  # index of highest log entry known to be committed
         self.lastApplied = 1  # index of highest log entry applied to state machine
-        self.timeout = 0
+        self.timeout = random.randint(1, 10)
         self.electionTime = 6
         self.timeoutTime = 3 + rand_offset()
         self.heartbeatTime = 1
+        self.candidate = False
         # Leader Only Fields
         self.leader = False  # set to true if node is leader
         self.nextIndex = [0, 0, 0, 0, 0]  # index of next log entry to send to server
@@ -138,7 +139,7 @@ class Server:
         while True:
             if self.alive:
                 #sleep(.1)
-                if self.timeout != 0 or self.leader:  # everyone does this
+                if self.timeout > 0 or self.leader:  # everyone does this
                     # if self.commitIndex > self.lastApplied:
                     file = open("log" + str(self.id) + ".txt", "w+")
                     for lines in self.log:
@@ -147,7 +148,7 @@ class Server:
                     file.close()
                     self.to_json()
                 if self.leader:  # leader only shit
-                    if self.timeout == 0:
+                    if self.timeout <= 0:
                         msg = {'type': 'append entries', 'term': self.currentTerm, 'id': self.id,
                                'prevLogIndex': min(self.nextIndex),
                                'prevLogTerm': self.log[min(self.nextIndex)],
@@ -159,7 +160,9 @@ class Server:
                                }
                         self.send(msg)
                     self.leader_commit_index()
-                if self.timeout == 0 and self.alive:  # candidate time
+                if self.timeout <= 0 and self.alive:  # candidate time
+                    print('i am running for election')
+                    self.candidate = True
                     self.leader_election()
             else:  # When 'crashed' (not self.alive) this keeps us quiet in the infinite loop
                 sleep(1)
@@ -173,15 +176,14 @@ class Server:
                 packet = packet.decode('utf-8')
                 packet = json.loads(packet)
 
-                packet = json.loads(packet, address)
-                self.receive(packet)
+                self.receive(packet, address)
             else:  # When 'crashed' (not self.alive) this keeps us quiet in the infinite loop
                 sleep(1)
 
-    def receive(self, packet):
+    def receive(self, packet, address):
         sender = packet['sender']
         if sender == 'client':
-            self.handle_request(packet)
+            self.handle_request(packet, address)
         if sender == 'server':
             if packet['term'] > self.currentTerm:
                 self.currentTerm = packet['term']
@@ -205,8 +207,6 @@ class Server:
                     msg = {'sender': 'server', 'type': 'vote response', 'id': self.id, 'term': self.currentTerm,
                            'success': success}
                     self.send(json.dumps(msg), False, packet['id'])
-                else:
-                    print(str(packet['id']) + 'wanted a vote i said NO')
             if type == 'ae response' and self.leader:
                 if len(self.log) - 1 >= packet['nextIndex']:
                     if packet['response']:
@@ -227,7 +227,7 @@ class Server:
         # leader does not time out, they only die, so we need to be mindful of that
         while True:
             if self.alive:
-                if self.timeout != 0:
+                if self.timeout > 0:
                     sleep(0.1)
                     self.timeout -= 0.1
             else:  # When 'crashed' (not self.alive) this keeps us quiet in the infinite loop
@@ -261,17 +261,33 @@ class Server:
 
     def request_vote(self, term, candidate_ID, lastLogIndex, lastLogTerm):
         if self.leader:
+            print(str(candidate_ID) + "wanted vote, I said no bc I am LEADER")
+            return False
+        if self.candidate:
+            print(str(candidate_ID) + "wanted vote, I said no bc I am CANDIDATE")
             return False
         if term < self.currentTerm:
+            print(str(candidate_ID) + "wanted vote, I said no bc their term is not upto date")
             return False
         if self.votedFor is None or self.votedFor is candidate_ID:
             try:
                 if self.log[lastLogIndex] == lastLogTerm:
+                    self.timeout = self.timeoutTime
                     self.currentTerm = term
+                    self.votedFor = candidate_ID
                     return True  # candidate received vote
                 else:
+                    print(str(candidate_ID) + "wanted vote, I said no bc their LOG is not upto date")
                     return False  # log was not up-to-date
             except IndexError:
+                if len(self.log) == 0: # We are just starting up, there is no leader yet
+                    print('i said true')
+                    self.timeout = self.timeoutTime
+                    self.currentTerm = term
+                    self.votedFor = candidate_ID
+                    return True
+                print(self.leaderID)
+                print(str(candidate_ID) + "wanted vote, I said no bc their LOG is not upto date HERE")
                 return False  # log was not up-to-date
 
     def leader_election(self):
@@ -286,16 +302,20 @@ class Server:
         msg = {'sender': 'server', 'type': 'request vote', 'term': self.currentTerm, 'id': self.id,
                'lastLogIndex': self.commitIndex, 'lastLogTerm': lastlogterm}
         self.send(json.dumps(msg))
-        while self.timeout != 0:
-            # print(self.votes)
+        while self.timeout > 0:
+            #print(self.votes)
             # print(self.currentTerm)
             if self.votes >= 3:
+                print('I AM LEADER\a')
                 self.leader = True
+                self.candidate = False
                 break
+        if self.timeout <= 0:
+            self.candidate = False
 
     def leader_commit_index(self):
         for n in range(self.commitIndex, self.commitIndex + 10):
-            a, b, c = False
+            a, b, c = False, False, False
             counter = 0
             if n > self.commitIndex:
                 a = True
@@ -323,8 +343,9 @@ class Server:
                     self.s.sendto(message.encode('utf-8'), (node[1], int(node[2])))
         else:
             for node in self.addresses:
-                if node[0] is destination:
+                if int(node[0]) == int(destination):
                     self.s.sendto(message.encode('utf-8'), (node[1], int(node[2])))
+                    print('sent!')
                     break
 
     # Method to handle the messaging to clients if we are leader
@@ -695,3 +716,4 @@ class Server:
 
 if __name__ == '__main__':
     server = Server()
+
