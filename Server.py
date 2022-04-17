@@ -21,7 +21,7 @@ import random
 # Static Methods
 # Method to get a random offset between 1 - 1000 ms
 def rand_offset():
-    return random.randint(1, 10) / 10
+    return random.randint(1, 10)
 
 
 # The Class that acts as a server Node
@@ -196,6 +196,7 @@ class Server:
         if sender == 'server':
             #  TODO this if statement might break everything.. not sure
             if (packet['term'] > self.currentTerm) and packet['type'] == 'append entries':
+                print('I INCREMENTED TERM 4')
                 self.currentTerm = packet['term']
                 self.leader = False
                 self.leaderID = packet['id']
@@ -231,7 +232,6 @@ class Server:
                 if packet['success']:
                     print('i got voted for!!')
                     self.votes += 1
-                    print(self.votes)
 
     # --------------------------------------------------------------------------------------------
     # The Timer Methods
@@ -269,6 +269,9 @@ class Server:
         if leaderCommit > self.commitIndex:
             self.commitIndex = min(leaderCommit, indexOfLastNewEntry)
         if success:
+            print('I INCREMENTED TERM 3')
+            print(str(term) + 'TERM')
+            print(str(self.currentTerm) + 'SELF.CURRENTTERM')
             self.currentTerm = term
         if not self.leader:
             self.leaderID = leaderID
@@ -290,6 +293,7 @@ class Server:
             try:
                 if self.log[lastLogIndex] == lastLogTerm:
                     self.timeout = self.timeoutTime
+                    print('I INCREMENTED TERM 2')
                     self.currentTerm = term
                     self.votedFor = candidate_ID
                     return True  # candidate received vote
@@ -300,6 +304,7 @@ class Server:
                 if len(self.log) == 0: # We are just starting up, there is no leader yet
                     print('i said true')
                     self.timeout = self.timeoutTime
+                    print('I INCREMENTED TERM 1')
                     self.currentTerm = term
                     self.votedFor = candidate_ID
                     return True
@@ -738,4 +743,7 @@ class Server:
 
 if __name__ == '__main__':
     server = Server()
-
+    # sleep(15)
+    # if server.id == 1:
+    #     server.alive == False
+    #     print("HEY IM HERE")
