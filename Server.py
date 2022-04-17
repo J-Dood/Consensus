@@ -54,8 +54,8 @@ class Server:
         self.address = None
         self.port = 4000
         # NEWLY ADDED
-        self.clients_clock_red = None  # Start as None until client contact made
-        self.clients_clock_blue = None
+        self.clients_clock_red = 0  # Start as None until client contact made
+        self.clients_clock_blue = 0
         self.client_alive_red = True
         self.client_alive_blue = True
         self.has_player = False
@@ -68,7 +68,7 @@ class Server:
 
         # Code to try and read in network info from saved file
         # If file exists use information within
-        self.id = int(input("Enter the process ID: ").strip())
+        self.id = input("Enter the process ID: ").strip()
         try:
             file_path = "server_addresses" + str(self.id) + ".txt"
             file = open(file_path, "r")
@@ -138,6 +138,7 @@ class Server:
     def server_loop(self):
         while True:
             if self.alive:
+                self.to_json()
                 #sleep(.1)
                 if self.timeout > 0 or self.leader:  # everyone does this
                     # if self.commitIndex > self.lastApplied:
@@ -146,7 +147,6 @@ class Server:
                         file.write(str(lines))
                         file.write("\n")
                     file.close()
-                    self.to_json()
                 if self.leader:  # leader only shit
                     # CONNIE HERE - check are we sending heartbeats, do we need to modify timeouts so leader can do shit for a bit
                     if self.timeout <= 0:
@@ -167,7 +167,6 @@ class Server:
                     self.leader_election()
             else:  # When 'crashed' (not self.alive) this keeps us quiet in the infinite loop
                 sleep(1)
-
 
     # Loop Method to handle incoming messages
     def receive_loop(self):
@@ -596,7 +595,7 @@ class Server:
         self.lastApplied = None
         self.leader = None
         self.nextIndex = None
-        self.votes = None
+        self.votes = 0
         self.addresses = None
         self.address = None
         self.port = None
@@ -701,11 +700,10 @@ class Server:
         address_book = []
         for line in file:
             address = line.strip().split(',')
-            if address[0] != str(self.id):
-                address_book.append([address[0], address[1], address[2]])
-            else:
+            if address[0] == str(self.id):
                 self.address = address[1]
                 self.port = int(address[2])
+            address_book.append([address[0], address[1], address[2]])
         self.addresses = address_book
         file.close()
 
