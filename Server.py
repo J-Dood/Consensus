@@ -170,7 +170,7 @@ class Server:
                         self.send(json.dumps(msg))
                         print('tried to send')
                     self.leader_commit_index()
-                if self.timeout <= 0 and self.alive:  # candidate time
+                if self.timeout <= 0 and self.alive and not self.leader:  # candidate time
                     print('i am running for election')
                     self.candidate = True
                     self.leader_election()
@@ -272,6 +272,7 @@ class Server:
             self.currentTerm = term
         if not self.leader:
             self.leaderID = leaderID
+            self.candidate = False # CONNIE mabe remove
         return success
 
     def request_vote(self, term, candidate_ID, lastLogIndex, lastLogTerm):
@@ -307,6 +308,7 @@ class Server:
                 return False  # log was not up-to-date
 
     def leader_election(self):
+
         print('hey leader election')
         self.votes = 1
         self.currentTerm += 1
