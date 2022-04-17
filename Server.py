@@ -286,6 +286,9 @@ class Server:
             print(str(candidate_ID) + "wanted vote, I said no bc I am LEADER")
             return False
         if self.candidate:
+            if term > self.currentTerm:
+                print(str(candidate_ID) + "wanted vote, I said YES bc I am CANDIDATE but their term is higher")
+                return True
             print(str(candidate_ID) + "wanted vote, I said no bc I am CANDIDATE")
             return False
         if term < self.currentTerm:
