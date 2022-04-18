@@ -452,13 +452,13 @@ class Server:
             clock = packet['time']
             if not self.seen(name, clock[0]):
                 action = packet['action']
-                if name == "red":
+                if name == "red" and action is not None:
                     self.client_count_red = clock[0]
                     self.clients_clock_red = clock[1]
                     self.game_logic(name, action)
                     self.talk_to_client(name)
                     self.talk_to_client("blue")
-                elif name == "blue":
+                elif name == "blue" and action is not None:
                     self.client_count_blue = clock[0]
                     self.clients_clock_blue = clock[1]
                     self.game_logic(name, action)
@@ -639,7 +639,7 @@ class Server:
         sleep(10)  # Keeps the values from clearing until all threads have 'likely' stopped
         self.log = None
         self.leaderID = None
-        self.currentTerm = 0
+        self.currentTerm = None
         self.votedFor = None
         self.commitIndex = None
         self.lastApplied = None
@@ -661,6 +661,14 @@ class Server:
         self.red_right_blocking = None
         self.blue_left_blocking = None
         self.blue_right_blocking = None
+        self.candidate = None
+        self.electionTime = None
+        self.heartbeatTime = None
+        self.id = None
+        self.matchIndex = None
+        self.timeout = None
+        self.timeoutTime = None
+        self.votes = None
 
     # Method to do the 'reviving' of the server
     def revive(self):
@@ -696,7 +704,15 @@ class Server:
             'red_left_blocking': self.red_left_blocking,
             'red_right_blocking': self.red_right_blocking,
             'blue_left_blocking': self.blue_left_blocking,
-            'blue_right_blocking': self.blue_right_blocking
+            'blue_right_blocking': self.blue_right_blocking,
+            'candidate': self.candidate,
+            'electionTime': self.electionTime,
+            'heartbeatTime': self.heartbeatTime,
+            'id': self.id,
+            'matchIndex': self.matchIndex,
+            'timeout': self.timeout,
+            'timeoutTime': self.timeoutTime,
+            'votes': self.votes
         }
         json_object = json.dumps(dictionary)
         # Try Catch for opening the file, should never fail
@@ -733,6 +749,14 @@ class Server:
                 self.red_right_blocking = dictionary['red_right_blocking']
                 self.blue_left_blocking = dictionary['blue_left_blocking']
                 self.blue_right_blocking = dictionary['blue_right_blocking']
+                self.candidate = dictionary['candidate']
+                self.electionTime = dictionary['electionTime']
+                self.heartbeatTime = dictionary['heartbeatTime']
+                self.id = dictionary['id']
+                self.matchIndex = dictionary['matchIndex']
+                self.timeout = dictionary['timeout']
+                self.timeoutTime = dictionary['timeoutTime']
+                self.votes = 0
             json_file.close()
         else:
             print("Node Restoration Failed!")
