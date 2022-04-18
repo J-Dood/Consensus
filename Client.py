@@ -351,6 +351,7 @@ class Client:
             self.Id = packet['name']
         self.ready = packet['game']
         self.clock[1] = packet['time'][1]
+        print('calling update log')
         self.update_log(packet['log'])
 
     # A method to update the game for this players moves
@@ -402,11 +403,16 @@ class Client:
 
     # A method to update the local game from a received log
     def update_log(self, log):
+        print(log)
         if log is not None:
             for item in log:
+                print(self.known)
+                print(item[3])
                 if self.known >= item[3]:
                     pass
                 else:
+                    print(item[1])
+                    print(self.Id)
                     if item[1] == self.Id:
                         self.take_action(item[2])
                     else:
@@ -439,7 +445,7 @@ if __name__ == '__main__':
     #     'sender': 'server'
     # }
     client = Client()
-    client.receive_inner(pack1)
+    #client.receive_inner(pack1)
     #sleep(20)
     #client.receive_inner(pack2)
     #client.send_move(act)

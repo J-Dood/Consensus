@@ -229,7 +229,7 @@ class Server:
                         self.nextIndex[int(packet['id'])-1] += 1
                         self.matchIndex[int(packet['id'])-1] = packet['commitIndex']
                     if not packet['response']:
-                        print('we are decrementing here')
+                        # print('we are decrementing here')
                         if self.nextIndex[int(packet['id'])-1] >= 1:
                             self.nextIndex[int(packet['id'])-1] -= 1
                         else:
@@ -266,16 +266,16 @@ class Server:
         success = True
         indexOfLastNewEntry = len(self.log) - 1
         if term < self.currentTerm:
-            print(term)
-            print(self.currentTerm)
-            print('TERM IS LESS THAN CURRENT _ FALSE')
+            # print(term)
+            # print(self.currentTerm)
+            # print('TERM IS LESS THAN CURRENT _ FALSE')
             success = False
         if indexOfLastNewEntry >= prevLogIndex:
             if bool(self.log):
                 if self.log[prevLogIndex] != prevLogTerm:
-                    print(self.log[prevLogIndex])
-                    print(prevLogTerm)
-                    print('LOG TERM DOES NOT MATCH _ FALSE')
+                    # print(self.log[prevLogIndex])
+                    # print(prevLogTerm)
+                    # print('LOG TERM DOES NOT MATCH _ FALSE')
                     success = False
                     self.log = self.log[0:prevLogIndex]
             else:
@@ -292,8 +292,8 @@ class Server:
         if not self.leader:
             self.leaderID = leaderID
             self.candidate = False
-        print(str(success) + "SUCCESSS")
-        print(self.log)
+        #print(str(success) + "SUCCESSS")
+        #print(self.log)
         return success
 
     # Method to request a vote
@@ -422,11 +422,11 @@ class Server:
                 'name': name,
                 'alive': alive,
                 'game': game,
-                'log': log,
+                'log': self.log,
                 'sender': "server"
                 }
         message = json.dumps(info)
-        print('sending to client here1')
+        #print('sending to client here1')
         self.send_to_client(name, message)
 
     # Method to forward a given message from the client to the leader
@@ -489,7 +489,7 @@ class Server:
                 'name': name,
                 'alive': alive,
                 'game': game,
-                'log': None,
+                'log': self.log,
                 'sender': "server"
                 }
         message = json.dumps(info)
@@ -502,7 +502,7 @@ class Server:
         print(name)
         for address in self.addresses:
             if address[0] == name:
-                self.s.sendto(message.encode('utf-8'), (address[1], address[2]))
+                self.s.sendto(message.encode('utf-8'), (address[1], int(address[2])))
                 break
 
     # Method to decide if a message has been seen previously
@@ -550,7 +550,8 @@ class Server:
                     self.log.append([self.currentTerm, 'blue', 'hit_left', self.lastApplied])
                     self.lastApplied += 1
             else:  # Should never get here
-                print("Invalid Move passed to game_logic()")
+                #print("Invalid Move passed to game_logic()")
+                pass
         elif player == "blue":  # Player "blue" did.....
             # Block
             if action == "block_left":
@@ -587,7 +588,7 @@ class Server:
         if blocking:
             return "stunned"
         else:
-            if random.randint(0, 10) == 5:  # One in ten chance of kill
+            if random.randint(0, 5) == 3:  # One in ten chance of kill
                 if name == "red":
                     self.client_alive_red = False
                 else:
