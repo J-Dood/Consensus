@@ -245,7 +245,6 @@ class Client:
     def client_info(self):
         self.address = input("Enter your IP address: ").strip()
         self.port = int(input("Enter your preferred port: ").strip())
-        self.address1 = input("Enter your public IP address: ").strip()
 
     # Method to create start up file for next run
     def to_file(self, server_id):
@@ -423,27 +422,27 @@ class Client:
 # The test driver
 if __name__ == '__main__':
     # act = "strike_right"
-    # log = [[3, 'red', 'hit_left', 4],
-    #     [3, 'blue', 'stunned', 5],
-    #     [3, 'blue', 'block_left', 6]]
-    # pack1 = {
-    #     'time': [0, 100],
-    #     'action': None,
-    #     'name': 'red',
-    #     'alive': True,
-    #     'game': True,
-    #     'log': log,
-    #     'sender': 'server'
-    # }
-    # pack2 = {
-    #     'time': [0, 100],
-    #     'action': None,
-    #     'name': 'red',
-    #     'alive': True,
-    #     'game': False,
-    #     'log': log,
-    #     'sender': 'server'
-    # }
+    log = [[3, 'red', 'hit_left', 4],
+          [3, 'blue', 'stunned', 5],
+         [3, 'blue', 'block_left', 6]]
+    pack1 = {
+         'time': [0, 100],
+         'action': None,
+         'name': 'red',
+         'alive': True,
+         'game': True,
+         'log': log,
+         'sender': 'server'
+    }
+    pack2 = {
+         'time': [0, 100],
+         'action': None,
+         'name': 'red',
+         'alive': True,
+          'game': False,
+         'log': log,
+         'sender': 'server'
+    }
     client = Client()
     #client.receive_inner(pack1)
     #sleep(20)
