@@ -254,32 +254,27 @@ class Server:
     # Methods To Assist Server Function
     # This Method appends the received entries
     def append_entries(self, term, leaderID, prevLogIndex, prevLogTerm, entries,
-                       leaderCommit):  # For leader, appends entries, heartbeat $$$$$$$$$$$$$$
+                       leaderCommit):
         self.timeout = self.timeoutTime
-        #print('im in append entreis')
-        # print(self.timeout)
         success = True
         indexOfLastNewEntry = len(self.log) - 1
-        if term < self.currentTerm:  # What is this doing? -JORDAN
+        if term < self.currentTerm:
             success = False
         if indexOfLastNewEntry >= prevLogIndex:
-            if self.log[prevLogIndex] != prevLogTerm:  # Probably need to index in further? -JORDAN
+            if self.log[prevLogIndex][0] != prevLogTerm:
                 success = False
-                for i in range(prevLogIndex, indexOfLastNewEntry):  # Probably need to index +1 to get last -JORDAN
-                    self.log.remove(i)  # Probably should slice, otherwise indexing may not work -JORDAN
-        for x in entries:
-            if x not in self.log:
-                self.log.append(x)
+                self.log = self.log[0:prevLogIndex]
+        if bool(entries):
+            for x in entries:
+                if x not in self.log:
+                    self.log.append(x)
         if leaderCommit > self.commitIndex:
             self.commitIndex = min(leaderCommit, indexOfLastNewEntry)
         if success:
-            # print('I INCREMENTED TERM 3')
-            # print(str(term) + 'TERM')
-            # print(str(self.currentTerm) + 'SELF.CURRENTTERM')
             self.currentTerm = term
         if not self.leader:
             self.leaderID = leaderID
-            self.candidate = False  # CONNIE maybe remove
+            self.candidate = False
         return success
 
     # Method to request a vote
@@ -750,6 +745,7 @@ class Server:
 
 
 if __name__ == '__main__':
+    server = Server()
     # TEST CODE
     '''add = ("3.4.55.666", 4000)
     mess = {'time': [1, 0],
