@@ -130,6 +130,7 @@ class Server:
             if choice == '1':  # Timeout
                 self.timeout = 0
             elif choice == '2':  # Crash
+                self.to_json()
                 self.crash()
             elif choice == '3':  # Restart
                 self.revive()
@@ -166,10 +167,10 @@ class Server:
                                }
                         # print('trying to send')   TEST CODE
                         self.send(json.dumps(msg))
-                        # print('tried to send')    TESTCODE
+                        # print('tried to send')    TEST CODE
                     self.leader_commit_index()
                 if self.timeout <= 0 and self.alive and not self.leader:  # candidate time
-                    # print('i am running for election')
+                    # print('i am running for election')    TEST CODE
                     self.candidate = True
                     self.leader_election()
             else:  # When 'crashed' (not self.alive) this keeps us quiet in the infinite loop
@@ -432,7 +433,7 @@ class Server:
     def handle_request(self, packet, address):
         if self.leader:
             name = packet['name']
-            clock = packet['clock']
+            clock = packet['time']
             if not self.seen(name, clock[0]):
                 action = packet['action']
                 if name == "red":
@@ -493,6 +494,8 @@ class Server:
             return request <= self.client_count_red
         elif name == "blue":
             return request <= self.client_count_blue
+        elif name is None:
+            return False
         else:
             print("Error: name sent to seen() not valid")
             return True
@@ -658,7 +661,7 @@ class Server:
             'log': self.log,
             'leaderID': self.leaderID,
             'currentTerm': self.currentTerm,
-            'voterFor': self.votedFor,
+            'votedFor': self.votedFor,
             'commitIndex': self.commitIndex,
             'lastApplied': self.lastApplied,
             'nextIndex': self.nextIndex,
@@ -747,4 +750,16 @@ class Server:
 
 
 if __name__ == '__main__':
+    # TEST CODE
+    '''add = ("3.4.55.666", 4000)
+    mess = {'time': [1, 0],
+           'action': None,
+           'name': None,
+           'alive': True,
+           'game': None,
+           'log': None,
+           'sender': "client"
+                }
     server = Server()
+    server.leader = True
+    server.receive(mess, add)'''
