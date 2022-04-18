@@ -183,6 +183,8 @@ class Server:
                 packet, address = self.s.recvfrom(1024)
                 packet = packet.decode('utf-8')
                 packet = json.loads(packet)
+                # print(type(packet))
+                # print(packet)
 
                 self.receive(packet, address)
             else:  # When 'crashed' (not self.alive) this keeps us quiet in the infinite loop
@@ -195,12 +197,12 @@ class Server:
             self.handle_request(packet, address)
         elif sender == 'server':
             type = packet['type']
-            #  TODO this if statement might break everything.. not sure
-            if packet['term'] > self.currentTerm and type == 'append entries':
-                # print('I INCREMENTED TERM 4')
-                self.currentTerm = packet['term']
-                self.leader = False
-                self.leaderID = packet['id']
+            # #  TODO this if statement might break everything.. not sure
+            # if packet['term'] > self.currentTerm and type == 'append entries':
+            #     # print('I INCREMENTED TERM 4')
+            #     self.currentTerm = packet['term']
+            #     self.leader = False
+            #     self.leaderID = packet['id']
             if type == 'append entries':
                 # print('hey i got an append entries!')
                 response = self.append_entries(packet['term'], packet['id'], packet['prevLogIndex'],
@@ -215,22 +217,26 @@ class Server:
                 success = self.request_vote(packet['term'], packet['id'],
                                             packet['lastLogIndex'], packet['lastLogTerm'])
                 if success:
-                    # print(str(packet['id']) + 'wanted a vote I said YES')
+                    print(str(packet['id']) + 'wanted a vote I said YES')
                     msg = {'sender': 'server', 'type': 'vote response', 'id': self.id, 'term': self.currentTerm,
                            'success': success}
                     self.send(json.dumps(msg), False, packet['id'])
             elif type == 'ae response' and self.leader:
-                # print('i go t ae response')
+                # print('i got ae response')
                 if len(self.log) - 1 >= packet['nextIndex']:
                     if packet['response']:
-                        self.nextIndex[packet['id']] += 1
-                        self.matchIndex[packet['id']] = packet['commitIndex']
+                        self.nextIndex[int(packet['id'])-1] += 1
+                        self.matchIndex[int(packet['id'])-1] = packet['commitIndex']
                     if not packet['response']:
-                        self.nextIndex[packet['id']] -= 1
+                        print('we are decrementing here')
+                        if self.nextIndex[int(packet['id'])-1] >= 1:
+                            self.nextIndex[int(packet['id'])-1] -= 1
+                        else:
+                            self.nextIndex[int(packet['id']) - 1] = 0
             elif type == 'vote response':
                 # print(packet['success'])
                 if packet['success']:
-                    # print('i got voted for!!')
+                    print('i got voted for!!')
                     self.votes += 1
             else:  # Error Condition
                 print("Invalid message type passed to receive()")
@@ -259,11 +265,19 @@ class Server:
         success = True
         indexOfLastNewEntry = len(self.log) - 1
         if term < self.currentTerm:
+            print('TERM IS LESS THAN CURRENT _ FALSE')
             success = False
         if indexOfLastNewEntry >= prevLogIndex:
-            if self.log[prevLogIndex][0] != prevLogTerm:
-                success = False
-                self.log = self.log[0:prevLogIndex]
+            print(prevLogIndex)
+            print(self.log)
+            if bool(self.log):
+                if self.log[prevLogIndex][0] != prevLogTerm:
+                    print('LOG TERM DOES NOT MATCH _ FALSE')
+                    success = False
+                    self.log = self.log[0:prevLogIndex]
+            else:
+                # TODO might need to do something here
+                pass
         if bool(entries):
             for x in entries:
                 if x not in self.log:
@@ -275,6 +289,7 @@ class Server:
         if not self.leader:
             self.leaderID = leaderID
             self.candidate = False
+        print(str(success) + "SUCCESSS")
         return success
 
     # Method to request a vote
@@ -332,7 +347,7 @@ class Server:
             # print(self.votes)
             # print(self.currentTerm)
             if self.votes >= 3:
-                # print('I AM LEADER\a')
+                print('I AM LEADER\a')
                 self.leader = True
                 self.candidate = False
                 break
@@ -376,9 +391,9 @@ class Server:
                     # print('sent to everyone!')
         else:
             for node in self.addresses:
-                if int(node[0]) == int(destination):
+                if node[0] == destination:
                     self.s.sendto(message.encode('utf-8'), (node[1], int(node[2])))
-                    # print('sent!')
+                     # print('sent!')
                     break
 
     # Method to handle the messaging to clients if we are leader
@@ -412,7 +427,7 @@ class Server:
     def fwd_to_leader(self, item):  # Send request to leader, we do need , fwd to leader
         message = json.dumps(item)
         identity = self.leaderID
-        self.send(json.dumps(message), False, identity)
+        self.send(message, False, identity)
 
     # Method to return all committed parts of a log back to some number
     def get_log(self, knows):
@@ -426,6 +441,7 @@ class Server:
 
     # Method to handle incoming requests
     def handle_request(self, packet, address):
+        print('inside handle request')
         if self.leader:
             name = packet['name']
             clock = packet['time']
@@ -478,6 +494,7 @@ class Server:
 
     # Method to send messages to client
     def send_to_client(self, name, message):
+        print('sending to client')
         for address in self.addresses:
             if address[0] == name:
                 self.s.sendto(message.encode('utf-8'), (address[1], address[2]))
@@ -499,6 +516,7 @@ class Server:
     # Methods to do the game logic
     # Method to handle the game logic on the server side
     def game_logic(self, player, action):
+        print('i appended to the log')
         self.log.append([self.currentTerm, player, action, self.lastApplied])
         self.lastApplied += 1
         if player == "red":  # Player "red" did.....
@@ -747,9 +765,9 @@ class Server:
 if __name__ == '__main__':
     server = Server()
     # TEST CODE
-    add = ("3.4.55.666", 4000)
-    mess = {'sender': 'server', 'type': 'ae response', 'id': "1", 'term': 6,
-                       'response': response, 'nextIndex': 7, 'commitIndex': 4}
-    server = Server()
-    server.leader = True
-    server.receive(mess, add)
+    # add = ("3.4.55.666", 4000)
+    # mess = {'sender': 'server', 'type': 'ae response', 'id': "1", 'term': 6,
+    #                    'response': response, 'nextIndex': 7, 'commitIndex': 4}
+    # server = Server()
+    # server.leader = True
+    # server.receive(mess, add)
