@@ -142,14 +142,10 @@ class Server:
         while True:
             if self.alive:
                 self.to_json()
-                #sleep(.1)
-                if self.timeout > 0 or self.leader:  # everyone does this
-                    # if self.commitIndex > self.lastApplied:
-                    file = open("log" + str(self.id) + ".txt", "w+")
-                    for lines in self.log:
-                        file.write(str(lines))
-                        file.write("\n")
-                    file.close()
+                # sleep(.1)
+                # if self.timeout > 0 or self.leader:  # everyone does this
+                # if self.commitIndex > self.lastApplied:
+                # self.to_log()
                 if self.leader:  # leader only shit
                     # CONNIE HERE - check are we sending heartbeats, do we need to modify timeouts so leader can do shit for a bit
                     if self.timeout <= 0:
@@ -168,12 +164,12 @@ class Server:
                                'addresses': self.addresses,
                                'state': self.get_game_state()
                                }
-                        print('trying to send')
+                        # print('trying to send')   TEST CODE
                         self.send(json.dumps(msg))
-                        print('tried to send')
+                        # print('tried to send')    TESTCODE
                     self.leader_commit_index()
                 if self.timeout <= 0 and self.alive and not self.leader:  # candidate time
-                    print('i am running for election')
+                    # print('i am running for election')
                     self.candidate = True
                     self.leader_election()
             else:  # When 'crashed' (not self.alive) this keeps us quiet in the infinite loop
@@ -191,20 +187,21 @@ class Server:
             else:  # When 'crashed' (not self.alive) this keeps us quiet in the infinite loop
                 sleep(1)
 
+    # Method to handle the receiving and processing of messages
     def receive(self, packet, address):
         sender = packet['sender']
         if sender == 'client':
             self.handle_request(packet, address)
-        if sender == 'server':
+        elif sender == 'server':
+            type = packet['type']
             #  TODO this if statement might break everything.. not sure
-            if (packet['term'] > self.currentTerm) and packet['type'] == 'append entries':
-                print('I INCREMENTED TERM 4')
+            if packet['term'] > self.currentTerm and type == 'append entries':
+                # print('I INCREMENTED TERM 4')
                 self.currentTerm = packet['term']
                 self.leader = False
                 self.leaderID = packet['id']
-            type = packet['type']
             if type == 'append entries':
-                print('hey i got an append entries!')
+                # print('hey i got an append entries!')
                 response = self.append_entries(packet['term'], packet['id'], packet['prevLogIndex'],
                                                packet['prevLogTerm'], packet['entries'], packet['leaderCommit'])
                 msg = {'sender': 'server', 'type': 'ae response', 'id': self.id, 'term': self.currentTerm,
@@ -213,27 +210,31 @@ class Server:
                 if response:
                     self.addresses = packet['addresses']
                     self.update_game_state(packet['state'])
-            if type == 'request vote':
-                success = self.request_vote(packet['term'], packet['id'], packet['lastLogIndex'],
-                                            packet['lastLogTerm'])
+            elif type == 'request vote':
+                success = self.request_vote(packet['term'], packet['id'],
+                                            packet['lastLogIndex'], packet['lastLogTerm'])
                 if success:
-                    print(str(packet['id']) + 'wanted a vote I said YES')
+                    # print(str(packet['id']) + 'wanted a vote I said YES')
                     msg = {'sender': 'server', 'type': 'vote response', 'id': self.id, 'term': self.currentTerm,
                            'success': success}
                     self.send(json.dumps(msg), False, packet['id'])
-            if type == 'ae response' and self.leader:
-                print('i go t ae response')
+            elif type == 'ae response' and self.leader:
+                # print('i go t ae response')
                 if len(self.log) - 1 >= packet['nextIndex']:
                     if packet['response']:
                         self.nextIndex[packet['id']] += 1
                         self.matchIndex[packet['id']] = packet['commitIndex']
                     if not packet['response']:
                         self.nextIndex[packet['id']] -= 1
-            if type == 'vote response':
-                print(packet['success'])
+            elif type == 'vote response':
+                # print(packet['success'])
                 if packet['success']:
-                    print('i got voted for!!')
+                    # print('i got voted for!!')
                     self.votes += 1
+            else:  # Error Condition
+                print("Invalid message type passed to receive()")
+        else:  # Error Condition
+            print("Invalid message sender passed to receive()")
 
     # --------------------------------------------------------------------------------------------
     # The Timer Methods
@@ -254,93 +255,95 @@ class Server:
     def append_entries(self, term, leaderID, prevLogIndex, prevLogTerm, entries,
                        leaderCommit):  # For leader, appends entries, heartbeat $$$$$$$$$$$$$$
         self.timeout = self.timeoutTime
-        print('im in append entreis')
-        print(self.timeout)
+        #print('im in append entreis')
+        # print(self.timeout)
         success = True
         indexOfLastNewEntry = len(self.log) - 1
-        if term < self.currentTerm:
+        if term < self.currentTerm:  # What is this doing? -JORDAN
             success = False
         if indexOfLastNewEntry >= prevLogIndex:
-            if self.log[prevLogIndex] != prevLogTerm:
+            if self.log[prevLogIndex] != prevLogTerm:  # Probably need to index in further? -JORDAN
                 success = False
-                for i in range(prevLogIndex, indexOfLastNewEntry):
-                    self.log.remove(i)
+                for i in range(prevLogIndex, indexOfLastNewEntry):  # Probably need to index +1 to get last -JORDAN
+                    self.log.remove(i)  # Probably should slice, otherwise indexing may not work -JORDAN
         for x in entries:
             if x not in self.log:
                 self.log.append(x)
         if leaderCommit > self.commitIndex:
             self.commitIndex = min(leaderCommit, indexOfLastNewEntry)
         if success:
-            print('I INCREMENTED TERM 3')
-            print(str(term) + 'TERM')
-            print(str(self.currentTerm) + 'SELF.CURRENTTERM')
+            # print('I INCREMENTED TERM 3')
+            # print(str(term) + 'TERM')
+            # print(str(self.currentTerm) + 'SELF.CURRENTTERM')
             self.currentTerm = term
         if not self.leader:
             self.leaderID = leaderID
-            self.candidate = False # CONNIE mabe remove
+            self.candidate = False  # CONNIE maybe remove
         return success
 
+    # Method to request a vote
     def request_vote(self, term, candidate_ID, lastLogIndex, lastLogTerm):
-        print('am I a leader?' + str(self.leader))
+        # print('am I a leader?' + str(self.leader))  TEST CODE
         if self.leader:
-            print(str(candidate_ID) + "wanted vote, I said no bc I am LEADER")
+            # print(str(candidate_ID) + "wanted vote, I said no bc I am LEADER")
             return False
         if self.candidate:
             if term > self.currentTerm:
-                print(str(candidate_ID) + "wanted vote, I said YES bc I am CANDIDATE but their term is higher")
+                # print(str(candidate_ID) + "wanted vote, I said YES bc I am CANDIDATE but their term is higher")
                 return True
-            print(str(candidate_ID) + "wanted vote, I said no bc I am CANDIDATE")
+            # print(str(candidate_ID) + "wanted vote, I said no bc I am CANDIDATE")
             return False
         if term < self.currentTerm:
-            print(str(candidate_ID) + "wanted vote, I said no bc their term is not upto date")
+            # print(str(candidate_ID) + "wanted vote, I said no bc their term is not upto date")
             return False
         if self.votedFor is None or self.votedFor == candidate_ID:
             try:
                 if self.log[lastLogIndex][0] == lastLogTerm:
                     self.timeout = self.timeoutTime
-                    print('I INCREMENTED TERM 2')
+                    # print('I INCREMENTED TERM 2')
                     self.currentTerm = term
                     self.votedFor = candidate_ID
                     return True  # candidate received vote
                 else:
-                    print(str(candidate_ID) + "wanted vote, I said no bc their LOG is not upto date")
+                    # print(str(candidate_ID) + "wanted vote, I said no bc their LOG is not upto date")
                     return False  # log was not up-to-date
             except IndexError:
-                if len(self.log) == 0: # We are just starting up, there is no leader yet
-                    print('i said true')
+                if len(self.log) == 0:  # We are just starting up, there is no leader yet
+                    # print('i said true')
                     self.timeout = self.timeoutTime
-                    print('I INCREMENTED TERM 1')
+                    # print('I INCREMENTED TERM 1')
                     self.currentTerm = term
                     self.votedFor = candidate_ID
                     return True
-                print(self.leaderID)
-                print(str(candidate_ID) + "wanted vote, I said no bc their LOG is not upto date HERE")
+                # print(self.leaderID)
+                # print(str(candidate_ID) + "wanted vote, I said no bc their LOG is not upto date HERE")
                 return False  # log was not up-to-date
 
+    # Method to run a leader election
     def leader_election(self):
-
-        print('hey leader election')
+        # print('hey leader election')
         self.votes = 1
         self.currentTerm += 1
         self.timeout = self.electionTime
         if bool(self.log):
-            lastlogterm = self.log[self.commitIndex]
+            lastlogterm = self.log[self.commitIndex][0]
         else:
             lastlogterm = None
         msg = {'sender': 'server', 'type': 'request vote', 'term': self.currentTerm, 'id': self.id,
                'lastLogIndex': self.commitIndex, 'lastLogTerm': lastlogterm}
         self.send(json.dumps(msg))
         while self.timeout > 0:
-            #print(self.votes)
+            # print(self.votes)
             # print(self.currentTerm)
             if self.votes >= 3:
-                print('I AM LEADER\a')
+                # print('I AM LEADER\a')
                 self.leader = True
                 self.candidate = False
                 break
         if self.timeout <= 0:
             self.candidate = False
 
+    # Method to determine committed values
     def leader_commit_index(self):
         for n in range(self.commitIndex, self.commitIndex + 10):
             a, b, c = False, False, False
@@ -359,7 +362,7 @@ class Server:
                 if len(self.log) == 0:
                     c = True
             if a and b and c:
-                print(n)
+                # print(n)
                 self.commitIndex = n
                 break
 
@@ -374,12 +377,12 @@ class Server:
                 else:
                     # tempSensorSocket.sendto(tempString.encode(), ("127.0.0.1",7070))
                     self.s.sendto(message.encode('utf-8'), (node[1], int(node[2])))
-                    print('sent to everyone!')
+                    # print('sent to everyone!')
         else:
             for node in self.addresses:
                 if int(node[0]) == int(destination):
                     self.s.sendto(message.encode('utf-8'), (node[1], int(node[2])))
-                    print('sent!')
+                    # print('sent!')
                     break
 
     # Method to handle the messaging to clients if we are leader
@@ -394,7 +397,7 @@ class Server:
         elif name == 'blue':
             knows = self.clients_clock_blue
             alive = self.client_alive_blue
-        else:
+        else:  # Error Condition
             print("Invalid Username passed to talk_to_client()")
             return
         log = self.get_log(knows)
@@ -506,7 +509,6 @@ class Server:
                 self.red_left_blocking = True
             elif action == "block_right":
                 self.red_right_blocking = True
-
             # Strike
             elif action == "strike_left":
                 self.red_left_blocking = False
@@ -527,15 +529,13 @@ class Server:
                     self.log.append([self.currentTerm, 'blue', 'hit_left', self.lastApplied])
                     self.lastApplied += 1
             else:  # Should never get here
-                print("Invalid Move!")
-
+                print("Invalid Move passed to game_logic()")
         elif player == "blue":  # Player "blue" did.....
             # Block
             if action == "block_left":
                 self.blue_left_blocking = True
             elif action == "block_right":
                 self.blue_right_blocking = True
-
             # Strike
             elif action == "strike_left":
                 self.blue_left_blocking = False
@@ -556,9 +556,9 @@ class Server:
                     self.log.append([self.currentTerm, 'red', 'hit_left', self.lastApplied])
                     self.lastApplied += 1
             else:  # Should never get here
-                print("Invalid Move!")
+                print("Invalid Move passed to game_logic()")
         else:  # Should never get here
-            print("Invalid Username!")
+            print("Invalid Username passed to game_logic()")
         self.to_log()  # Where log gets saved to file once updated
 
     # Method to decide outcome of a strike
@@ -748,7 +748,3 @@ class Server:
 
 if __name__ == '__main__':
     server = Server()
-    # sleep(15)
-    # if server.id == 1:
-    #     server.alive == False
-    #     print("HEY IM HERE")
