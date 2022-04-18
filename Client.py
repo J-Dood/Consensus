@@ -195,12 +195,13 @@ class Client:
     # Class functions
     # This method creates the game client object and gathers needed networking info
     def __init__(self):
+        server_id = input("Enter a client ID number 1 or 2: ").strip()
         try:
-            file_path = r"server_addresses.txt"
+            file_path = "server_addresses" + str(server_id) + ".txt"
             file = open(file_path, "r")
             self.from_file(file)
         except IOError:
-            self.build_self()
+            self.build_self(server_id)
         # Sets up the port
         self.s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.s.bind((self.address, self.port))
@@ -215,7 +216,7 @@ class Client:
         self.time_keeper.start()
 
     # This method gathers needed network info from the user if file not found.
-    def build_self(self):
+    def build_self(self, server):
         print("The start up file was not found, please enter values manually.")
         address_book = []
         for i in range(5):
@@ -225,7 +226,7 @@ class Client:
             address_book.append([server_id, server_address, server_port])
         self.addresses = address_book
         self.client_info()
-        self.to_file()
+        self.to_file(server)
 
     # This method builds the client from a found file
     def from_file(self, file):
@@ -246,8 +247,8 @@ class Client:
         self.port = int(input("Enter your preferred port: ").strip())
 
     # Method to create start up file for next run
-    def to_file(self):
-        file = open("server_addresses.txt", 'w+')
+    def to_file(self, server_id):
+        file = open("server_addresses" + str(server_id) + ".txt", 'w+')
         for address in self.addresses:
             line = str(address[0]) + ',' + address[1] + ',' + str(address[2]) + "\n"
             file.write(line)
