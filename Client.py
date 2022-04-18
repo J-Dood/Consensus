@@ -401,43 +401,44 @@ class Client:
 
     # A method to update the local game from a received log
     def update_log(self, log):
-        for item in log:
-            if self.known >= item[3]:
-                pass
-            else:
-                if item[1] == self.Id:
-                    self.take_action(item[2])
+        if log is not None:
+            for item in log:
+                if self.known >= item[3]:
+                    pass
                 else:
-                    self.others_action(item[2])
-                self.known = item[3]
+                    if item[1] == self.Id:
+                        self.take_action(item[2])
+                    else:
+                        self.others_action(item[2])
+                    self.known = item[3]
 
 
 # The test driver
 if __name__ == '__main__':
-    act = "strike_right"
-    log = [[3, 'red', 'hit_left', 4],
-        [3, 'blue', 'stunned', 5],
-        [3, 'blue', 'block_left', 6]]
-    pack1 = {
-        'time': [0, 100],
-        'action': None,
-        'name': 'red',
-        'alive': True,
-        'game': True,
-        'log': log,
-        'sender': 'server'
-    }
-    pack2 = {
-        'time': [0, 100],
-        'action': None,
-        'name': 'red',
-        'alive': True,
-        'game': False,
-        'log': log,
-        'sender': 'server'
-    }
+    # act = "strike_right"
+    # log = [[3, 'red', 'hit_left', 4],
+    #     [3, 'blue', 'stunned', 5],
+    #     [3, 'blue', 'block_left', 6]]
+    # pack1 = {
+    #     'time': [0, 100],
+    #     'action': None,
+    #     'name': 'red',
+    #     'alive': True,
+    #     'game': True,
+    #     'log': log,
+    #     'sender': 'server'
+    # }
+    # pack2 = {
+    #     'time': [0, 100],
+    #     'action': None,
+    #     'name': 'red',
+    #     'alive': True,
+    #     'game': False,
+    #     'log': log,
+    #     'sender': 'server'
+    # }
     client = Client()
-    client.receive_inner(pack1)
+    # client.receive_inner(pack1)
     #sleep(20)
     #client.receive_inner(pack2)
     #client.send_move(act)

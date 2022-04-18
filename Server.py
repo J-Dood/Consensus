@@ -146,13 +146,13 @@ class Server:
                 # sleep(.1)
                 # if self.timeout > 0 or self.leader:  # everyone does this
                 # if self.commitIndex > self.lastApplied:
-                # self.to_log()
+                self.to_log()
                 if self.leader:  # leader only shit
                     # CONNIE HERE - check are we sending heartbeats, do we need to modify timeouts so leader can do shit for a bit
                     if self.timeout <= 0:
                         try:
                             prevlogterm = self.log[min(self.nextIndex)]
-                            entries = self.log[min(self.nextIndex): (len(self.log) - 1)]
+                            entries = self.log[min(self.nextIndex): (len(self.log))]
                         except IndexError:
                             prevlogterm = None
                             entries = None
@@ -196,6 +196,7 @@ class Server:
         if sender == 'client':
             self.handle_request(packet, address)
         elif sender == 'server':
+            # print(packet)
             type = packet['type']
             # #  TODO this if statement might break everything.. not sure
             # if packet['term'] > self.currentTerm and type == 'append entries':
@@ -265,13 +266,15 @@ class Server:
         success = True
         indexOfLastNewEntry = len(self.log) - 1
         if term < self.currentTerm:
+            print(term)
+            print(self.currentTerm)
             print('TERM IS LESS THAN CURRENT _ FALSE')
             success = False
         if indexOfLastNewEntry >= prevLogIndex:
-            print(prevLogIndex)
-            print(self.log)
             if bool(self.log):
-                if self.log[prevLogIndex][0] != prevLogTerm:
+                if self.log[prevLogIndex] != prevLogTerm:
+                    print(self.log[prevLogIndex])
+                    print(prevLogTerm)
                     print('LOG TERM DOES NOT MATCH _ FALSE')
                     success = False
                     self.log = self.log[0:prevLogIndex]
@@ -290,6 +293,7 @@ class Server:
             self.leaderID = leaderID
             self.candidate = False
         print(str(success) + "SUCCESSS")
+        print(self.log)
         return success
 
     # Method to request a vote
@@ -350,6 +354,7 @@ class Server:
                 print('I AM LEADER\a')
                 self.leader = True
                 self.candidate = False
+                self.currentTerm += 5
                 break
         if self.timeout <= 0:
             self.candidate = False
@@ -421,6 +426,7 @@ class Server:
                 'sender': "server"
                 }
         message = json.dumps(info)
+        print('sending to client here1')
         self.send_to_client(name, message)
 
     # Method to forward a given message from the client to the leader
@@ -490,11 +496,13 @@ class Server:
                 'sender': "server"
                 }
         message = json.dumps(info)
+        print('sending to client here')
         self.send_to_client(name, message)
 
     # Method to send messages to client
     def send_to_client(self, name, message):
-        print('sending to client')
+
+        print(name)
         for address in self.addresses:
             if address[0] == name:
                 self.s.sendto(message.encode('utf-8'), (address[1], address[2]))
@@ -575,7 +583,6 @@ class Server:
                 print("Invalid Move passed to game_logic()")
         else:  # Should never get here
             print("Invalid Username passed to game_logic()")
-        self.to_log()  # Where log gets saved to file once updated
 
     # Method to decide outcome of a strike
     def strike(self, name, blocking, left):
