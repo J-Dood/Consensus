@@ -447,7 +447,6 @@ class Server:
 
     # Method to handle incoming requests
     def handle_request(self, packet, address):
-        print('inside handle request')
         if self.leader:
             name = packet['name']
             clock = packet['time']
@@ -466,23 +465,21 @@ class Server:
                     self.talk_to_client(name)
                     self.talk_to_client("red")
                 else:  # You get here if name is None
-                    self.handle_startup(address)
+                    self.handle_startup()
             else:
                 pass  # Done if message is duplicate
         else:
             self.fwd_to_leader(packet)
 
     # Method to handle first contact with client
-    def handle_startup(self, address):
+    def handle_startup(self):
         if self.has_player:
             self.client_alive_blue = True
-            self.addresses.append(["blue", address[0], address[1]])
             self.send_comms("red", True)
             self.send_comms("blue", True)
         else:
             self.has_player = True
             self.client_alive_red = True
-            self.addresses.append(["red", address[0], address[1]])
             self.send_comms("red", False)
 
     # Method to handle sending communications to clients

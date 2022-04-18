@@ -245,6 +245,7 @@ class Client:
     def client_info(self):
         self.address = input("Enter your IP address: ").strip()
         self.port = int(input("Enter your preferred port: ").strip())
+        self.address1 = input("Enter your public IP address: ").strip()
 
     # Method to create start up file for next run
     def to_file(self, server_id):
@@ -438,7 +439,7 @@ if __name__ == '__main__':
     #     'sender': 'server'
     # }
     client = Client()
-    # client.receive_inner(pack1)
+    client.receive_inner(pack1)
     #sleep(20)
     #client.receive_inner(pack2)
     #client.send_move(act)
