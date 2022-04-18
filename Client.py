@@ -197,7 +197,7 @@ class Client:
     def __init__(self):
         server_id = input("Enter a client ID number 1 or 2: ").strip()
         try:
-            file_path = "server_addresses" + str(server_id) + ".txt"
+            file_path = "client_addresses" + str(server_id) + ".txt"
             file = open(file_path, "r")
             self.from_file(file)
         except IOError:
@@ -248,7 +248,7 @@ class Client:
 
     # Method to create start up file for next run
     def to_file(self, server_id):
-        file = open("server_addresses" + str(server_id) + ".txt", 'w+')
+        file = open("client_addresses" + str(server_id) + ".txt", 'w+')
         for address in self.addresses:
             line = str(address[0]) + ',' + address[1] + ',' + str(address[2]) + "\n"
             file.write(line)
