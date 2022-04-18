@@ -39,9 +39,10 @@ class Tester:
             if self.log[prevLogIndex][0] != prevLogTerm:
                 success = False
                 self.log = self.log[0:prevLogIndex]
-        for x in entries:
-            if x not in self.log:
-                self.log.append(x)
+        if bool(entries):
+            for x in entries:
+                if x not in self.log:
+                    self.log.append(x)
         if leaderCommit > self.commitIndex:
             self.commitIndex = min(leaderCommit, indexOfLastNewEntry)
         if success:
