@@ -221,7 +221,7 @@ class Client:
         for i in range(5):
             server_id = int(input("Enter Server ID number 1-5: ").strip())
             server_address = input("Enter Server address: ").strip()
-            server_port = 4000
+            server_port = int(input("Enter a Port: ").strip())
             address_book.append([server_id, server_address, server_port])
         self.addresses = address_book
         self.client_info()

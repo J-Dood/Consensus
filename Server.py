@@ -751,15 +751,9 @@ class Server:
 
 if __name__ == '__main__':
     # TEST CODE
-    '''add = ("3.4.55.666", 4000)
-    mess = {'time': [1, 0],
-           'action': None,
-           'name': None,
-           'alive': True,
-           'game': None,
-           'log': None,
-           'sender': "client"
-                }
+    add = ("3.4.55.666", 4000)
+    mess = {'sender': 'server', 'type': 'ae response', 'id': "1", 'term': 6,
+                       'response': response, 'nextIndex': 7, 'commitIndex': 4}
     server = Server()
     server.leader = True
-    server.receive(mess, add)'''
+    server.receive(mess, add)
