@@ -44,6 +44,7 @@ class Server:
         self.timeoutTime = 3 + rand_offset()
         self.heartbeatTime = 1
         self.candidate = False
+        self.firstElection = True
         # Leader Only Fields
         self.leader = False  # set to true if node is leader
         self.nextIndex = [0, 0, 0, 0, 0]  # index of next log entry to send to server
@@ -129,10 +130,13 @@ class Server:
             choice = input(">").strip().lower()
             if choice == '1':  # Timeout
                 self.timeout = 0
+                print("Force timeout")
             elif choice == '2':  # Crash
-                self.to_json()
+                print("Force crash")
                 self.crash()
+                # print('alive' + str(self.alive))
             elif choice == '3':  # Restart
+                print("IM BACK - node restart")
                 self.revive()
             else:
                 print("Option not recognized, try again.\n")
@@ -170,7 +174,7 @@ class Server:
                         # print('tried to send')    TEST CODE
                     self.leader_commit_index()
                 if self.timeout <= 0 and self.alive and not self.leader:  # candidate time
-                    # print('i am running for election')    TEST CODE
+                    print('I am running for election')
                     self.candidate = True
                     self.leader_election()
             else:  # When 'crashed' (not self.alive) this keeps us quiet in the infinite loop
@@ -205,6 +209,7 @@ class Server:
             #     self.leader = False
             #     self.leaderID = packet['id']
             if type == 'append entries':
+                self.firstElection = False
                 # print('hey i got an append entries!')
                 response = self.append_entries(packet['term'], packet['id'], packet['prevLogIndex'],
                                                packet['prevLogTerm'], packet['entries'], packet['leaderCommit'])
@@ -215,10 +220,11 @@ class Server:
                     self.addresses = packet['addresses']
                     self.update_game_state(packet['state'])
             elif type == 'request vote':
+               # print('I was asked to vote for' + str(packet['id']))
                 success = self.request_vote(packet['term'], packet['id'],
                                             packet['lastLogIndex'], packet['lastLogTerm'])
                 if success:
-                    print(str(packet['id']) + 'wanted a vote I said YES')
+                    print('Server ' + str(packet['id']) + ' wanted a vote I said YES')
                     msg = {'sender': 'server', 'type': 'vote response', 'id': self.id, 'term': self.currentTerm,
                            'success': success}
                     self.send(json.dumps(msg), False, packet['id'])
@@ -237,7 +243,7 @@ class Server:
             elif type == 'vote response':
                 # print(packet['success'])
                 if packet['success']:
-                    print('i got voted for!!')
+                    print('I got voted for!!')
                     self.votes += 1
             else:  # Error Condition
                 print("Invalid message type passed to receive()")
@@ -302,6 +308,11 @@ class Server:
         if self.leader:
             # print(str(candidate_ID) + "wanted vote, I said no bc I am LEADER")
             return False
+        # print(self.currentTerm)
+        # print(term)
+        if not self.firstElection and term > self.currentTerm:
+            # print(str(candidate_ID) + "wanted vote, I said YES bc I am CANDIDATE but their term is higher")
+            return True
         if self.candidate:
             if term > self.currentTerm:
                 # print(str(candidate_ID) + "wanted vote, I said YES bc I am CANDIDATE but their term is higher")
@@ -351,9 +362,10 @@ class Server:
             # print(self.votes)
             # print(self.currentTerm)
             if self.votes >= 3:
-                print('I AM LEADER\a')
+                print('I AM THE LEADER\a')
                 self.leader = True
                 self.candidate = False
+                self.firstElection = False
                 self.currentTerm += 5
                 break
         if self.timeout <= 0:
