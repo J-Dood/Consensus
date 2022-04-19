@@ -676,7 +676,6 @@ class Server:
         self.candidate = None
         self.electionTime = None
         self.heartbeatTime = None
-        self.id = None
         self.matchIndex = None
         self.timeout = None
         self.timeoutTime = None
@@ -720,7 +719,6 @@ class Server:
             'candidate': self.candidate,
             'electionTime': self.electionTime,
             'heartbeatTime': self.heartbeatTime,
-            'id': self.id,
             'matchIndex': self.matchIndex,
             'timeout': self.timeout,
             'timeoutTime': self.timeoutTime,
@@ -764,7 +762,6 @@ class Server:
                 self.candidate = dictionary['candidate']
                 self.electionTime = dictionary['electionTime']
                 self.heartbeatTime = dictionary['heartbeatTime']
-                self.id = dictionary['id']
                 self.matchIndex = dictionary['matchIndex']
                 self.timeout = dictionary['timeout']
                 self.timeoutTime = dictionary['timeoutTime']
