@@ -464,13 +464,13 @@ class Server:
             clock = packet['time']
             if not self.seen(name, clock[0]):
                 action = packet['action']
-                if name == "red" and action is not None:
+                if name == "red":
                     self.client_count_red = clock[0]
                     self.clients_clock_red = clock[1]
                     self.game_logic(name, action)
                     self.talk_to_client(name)
                     self.talk_to_client("blue")
-                elif name == "blue" and action is not None:
+                elif name == "blue":
                     self.client_count_blue = clock[0]
                     self.clients_clock_blue = clock[1]
                     self.game_logic(name, action)
